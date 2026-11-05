@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEO audit – {{ audit.domain }}</title>
+<style>
+:root{--bg:#fff;--fg:#1d2330;--muted:#5d6678;--line:#e3e6ec;--card:#f7f8fa;--fail:#c62828;--warn:#b26a00;--pass:#2e7d32;--nc:#6b7280;--accent:#2f5bd3}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#e6e9ef;--muted:#9aa3b2;--line:#2a2f3a;--card:#1a1e26;--fail:#ef5350;--warn:#ffb74d;--pass:#66bb6a;--nc:#9aa3b2;--accent:#7aa2ff}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:19px;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}h3{font-size:16px;margin:24px 0 8px}
+.muted{color:var(--muted)}.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px}
+.score{font-size:28px;font-weight:650}.label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:10px;border:1px solid currentColor;white-space:nowrap}
+.FAIL{color:var(--fail)}.WARNING{color:var(--warn)}.PASS{color:var(--pass)}.NOT_CHECKED,.NA{color:var(--nc)}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted);font-size:12px}td.url{word-break:break-all;max-width:340px}
+details{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:var(--card)}summary{cursor:pointer;padding:10px 12px;list-style:none;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+summary::-webkit-details-marker{display:none}.body{padding:0 12px 12px}
+pre{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;overflow:auto;font-size:12px;white-space:pre-wrap;word-break:break-all;margin:6px 0}
+ul.missing{columns:2;padding-left:18px}@media(max-width:640px){ul.missing{columns:1}}
+.src{font-size:11px;color:var(--muted)}
+@media print{details{break-inside:avoid}details:not([open]) .body{display:block}}
+</style>
+</head>
+<body><div class="wrap">
+<h1>SEO audit: {{ audit.domain }}</h1>
+<div class="muted">{{ audit.url }} · audit #{{ audit.id }} · {{ audit.finished_at or generated_at }} · {{ generator }}</div>
+
+<h2>Scores</h2>
+<div class="grid">
+  <div class="card"><div class="label">Overall</div><div class="score">{{ scores.overall if scores.overall is not none else "–" }}</div></div>
+  <div class="card"><div class="label">Coverage</div><div class="score">{{ coverage if coverage is not none else 0 }}%</div><div class="src">share of the audit actually measured</div></div>
+  {% for key, c in (scores.categories or {}).items() %}
+  <div class="card"><div class="label">{{ category_labels.get(key, key) }}</div>
+    <div class="score">{{ c.score if c.score is not none else "–" }}</div>
+    <div class="src">coverage {{ c.coverage }}% · weight {{ c.weight }}{% if c.score is not none %} (eff. {{ c.effective_weight }}%){% endif %}</div></div>
+  {% endfor %}
+</div>
+<p class="muted">Scores use only measured checks. NOT_CHECKED items are excluded and lower the coverage instead.
+Status counts: {% for k, v in status_counts.items() %}<span class="badge {{ k|replace('/', '') }}">{{ k }} {{ v }}</span> {% endfor %}</p>
+
+<h2>Missing on this site</h2>
+{% if missing %}<ul class="missing">{% for m in missing %}<li>{{ m }}</li>{% endfor %}</ul>{% else %}<p class="muted">Nothing essential is missing among the checks run.</p>{% endif %}
+
+<h2>Top 10 fixes</h2>
+{% if top_fixes %}
+<table><thead><tr><th>#</th><th>Issue</th><th>Status</th><th>Affected</th><th>Impact</th><th>Effort</th></tr></thead><tbody>
+{% for f in top_fixes %}
+<tr><td>{{ loop.index }}</td><td><b>{{ f.title }}</b><br><span class="muted">{{ f.summary }}</span><br>{{ f.fix }}</td>
+<td><span class="badge {{ f.status }}">{{ f.status }}</span></td><td>{{ f.affected }}{% if f.total %} / {{ f.total }}{% endif %}</td><td>{{ f.impact }}</td><td>{{ f.effort }}</td></tr>
+{% endfor %}</tbody></table>
+{% else %}<p class="muted">No issues found.</p>{% endif %}
+
+<h2>All findings</h2>
+{% for cat, items in findings_by_category.items() %}
+<h3>{{ category_labels.get(cat, cat) }}</h3>
+{% for f in items %}
+<details{% if f.status == 'FAIL' %} open{% endif %}>
+<summary><span class="badge {{ f.status|replace('/', '') }}">{{ f.status }}</span><b>{{ f.title }}</b>
+<span class="muted">{{ f.module_number }}. {{ f.module_name }}{% if f.status in ['FAIL','WARNING'] %} · {{ f.affected }}{% if f.total %}/{{ f.total }}{% endif %} affected · impact {{ f.impact }} · effort {{ f.effort }}{% endif %}</span></summary>
+<div class="body">
+{% if f.reason %}<p><b>Not measured:</b> {{ f.reason }}</p>{% endif %}
+{% if f.summary %}<p>{{ f.summary }}</p>{% endif %}
+{% if f.status in ['FAIL','WARNING'] %}<p><b>Why it matters:</b> {{ f.why }}<br><b>Fix:</b> {{ f.fix }}</p>{% endif %}
+{% if f.generated_fix %}<div class="label">Generated fix</div><pre>{{ f.generated_fix|fix_code }}</pre>{% endif %}
+{% if f['items'] %}
+<table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
+{% for it in f['items'][:50] %}<tr><td class="url">{{ it.url or '—' }}</td><td>{{ it.evidence|evidence }}</td><td>{% if it.generated_fix %}<pre>{{ it.generated_fix|fix_code }}</pre>{% endif %}</td></tr>{% endfor %}
+</tbody></table>
+{% if f['items']|length > 50 or f.items_truncated %}<p class="muted">Showing 50 of {{ f['items']|length + f.items_truncated }} — see the CSV/JSON export for all.</p>{% endif %}
+{% endif %}
+{% if f.sources %}<div class="src">Source: {{ f.sources|join(', ') }}</div>{% endif %}
+</div></details>
+{% endfor %}
+{% endfor %}
+
+<h2>Not checked</h2>
+<table><thead><tr><th>Check</th><th>Reason</th></tr></thead><tbody>
+{% for f in not_checked %}<tr><td>{{ f.module_number }}. {{ f.module_name }}: {{ f.title }}</td><td>{{ f.reason }}</td></tr>{% endfor %}
+</tbody></table>
+
+<h2>Crawl details</h2>
+<table><tbody>
+<tr><th>Start URL</th><td>{{ site.start_url }}</td></tr>
+<tr><th>Pages fetched</th><td>{{ site.crawl.pages_fetched }} (limit {{ site.crawl.limit }}{% if site.crawl.limit_reached %}, limit reached{% endif %}) · rendered with JS: {{ site.crawl.rendered_pages }} · {{ site.crawl.duration_s }} s</td></tr>
+<tr><th>robots.txt</th><td>HTTP {{ site.robots.status }}{% if site.robots.sitemaps %} · Sitemap lines: {{ site.robots.sitemaps|join(', ') }}{% endif %}</td></tr>
+<tr><th>Sitemaps</th><td>{% for s in site.sitemaps %}{{ s.url }} ({{ s.status }}{% if s.url_count %}, {{ s.url_count }} URLs{% endif %}{% if s.error %}, {{ s.error }}{% endif %})<br>{% else %}none found{% endfor %}</td></tr>
+<tr><th>llms.txt</th><td>{{ 'present' if site.llms_txt.present else 'not found' }} (HTTP {{ site.llms_txt.status }})</td></tr>
+<tr><th>AI crawlers</th><td>{% for bot, r in (site.ai_bots or {}).items() %}{{ bot }}: {{ 'allowed' if r.root_allowed else 'blocked' }}{% if r.has_specific_group %} (specific rule){% endif %}<br>{% endfor %}</td></tr>
+<tr><th>JavaScript site</th><td>{{ 'yes – content depends on JS' if site.js_site else 'no' }}</td></tr>
+</tbody></table>
+
+<h2>Pages ({{ pages|length }})</h2>
+<table><thead><tr><th>URL</th><th>Status</th><th>Depth</th><th>Inlinks</th><th>Words</th><th>Indexable</th><th>Title</th></tr></thead><tbody>
+{% for p in pages[:500] %}<tr><td class="url">{{ p.url }}</td><td>{{ p.status_code }}</td><td>{{ p.depth if p.depth is not none else '—' }}</td><td>{{ p.inlinks }}</td><td>{{ p.word_count or '' }}</td><td>{{ 'yes' if p.indexable else 'no' }}</td><td>{{ p.title or '' }}</td></tr>{% endfor %}
+</tbody></table>
+</div></body></html>
