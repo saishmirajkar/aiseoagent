@@ -39,6 +39,24 @@ def _tiny(img: ImageRec, a: ImageAsset | None) -> bool:
     return any(d is not None and d <= 2 for d in dims)
 
 
+def group_by_image(pairs: list[tuple[PageData, ImageRec]], evidence, fix=None) -> list[FindingItem]:
+    """One finding item per unique image file, listing every page it appears on.
+
+    A logo with no alt in a site-wide header is one fix, not one problem per page.
+    """
+    groups: dict[str, list[tuple[PageData, ImageRec]]] = defaultdict(list)
+    for p, i in pairs:
+        groups[i.src].append((p, i))
+    items = []
+    for src, lst in groups.items():
+        pages = list(dict.fromkeys(p.url for p, _ in lst))
+        p0, i0 = lst[0]
+        ev = {"src": src, **evidence(p0, i0), "pages": len(pages), "occurrences": len(lst)}
+        items.append(FindingItem(pages[0], ev, generated_fix=fix(p0, i0) if fix else None, also_on=pages[1:]))
+    items.sort(key=lambda it: -it.evidence["occurrences"])
+    return items
+
+
 def _display_w(img: ImageRec) -> int | None:
     return img.rendered_w or img.width_attr
 
@@ -98,20 +116,20 @@ class ImageSEO(CheckModule):
         assets = ctx.site.images
         pages: list[PageData] = ctx.site.html_pages()
         instances = [(p, img) for p in pages for img in p.images if not _tiny(img, assets.get(img.src))]
-        n_inst = len(instances)
+        n_uniq = len({i.src for _, i in instances})
         out: list[CheckResult] = []
 
         out.append(self.by_population(
             "img.alt_missing",
-            [FindingItem(p.url, {"src": i.src, "filename": i.filename}) for p, i in instances if i.alt is None],
-            n_inst, summary="Images with no alt attribute"))
+            group_by_image([(p, i) for p, i in instances if i.alt is None], lambda p, i: {"filename": i.filename}),
+            n_uniq, summary="Images with no alt attribute (unique image files)"))
 
         # Whether a non-linked image with alt="" is decorative is a judgment call (vision model,
         # LLM layer). Deterministically we only flag image links that end up with no anchor text.
         linked = [(p, i) for p, i in instances if i.in_link and i.link_text_empty]
-        empty = [FindingItem(p.url, {"src": i.src, "alt": i.alt}) for p, i in linked
-                 if i.alt is not None and not i.alt.strip()]
-        out.append(self.by_population("img.alt_empty", empty, len(linked), fail=False,
+        empty = group_by_image([(p, i) for p, i in linked if i.alt is not None and not i.alt.strip()],
+                               lambda p, i: {"alt": i.alt})
+        out.append(self.by_population("img.alt_empty", empty, len({i.src for _, i in linked}), fail=False,
                                       summary="Image-only links whose image has empty alt"))
 
         # per unique image file
@@ -122,7 +140,8 @@ class ImageSEO(CheckModule):
         uniq = list(uses)
         platform_srcs = {s: PLATFORM_RENAMING_CDNS[host_of(s)] for s in uniq if host_of(s) in PLATFORM_RENAMING_CDNS}
         own = [s for s in uniq if s not in platform_srcs]
-        fn = [FindingItem(uses[s][0], {"src": s, "filename": filename_of(s), "used_on": uses[s][:5]})
+        fn = [FindingItem(uses[s][0], {"src": s, "filename": filename_of(s), "pages": len(uses[s])},
+                          also_on=uses[s][1:])
               for s in own if non_descriptive_filename(filename_of(s))]
         platforms = sorted(set(platform_srcs.values()))
         if not own and platform_srcs:
@@ -152,26 +171,33 @@ class ImageSEO(CheckModule):
                     any_fail = any_fail or kb > th.image_fail_kb
                     heavy.append(FindingItem(uses[s][0], {"src": s, "kb": round(kb), "format": a.format,
                                                           "intrinsic": [a.intrinsic_w, a.intrinsic_h],
-                                                          "exact_size": a.bytes_exact, "used_on": uses[s][:5]}))
+                                                          "exact_size": a.bytes_exact, "pages": len(uses[s])},
+                                             also_on=uses[s][1:]))
             heavy.sort(key=lambda i: -i.evidence["kb"])
             out.append(self.by_population("img.file_size", heavy, len(probed), fail=any_fail,
                                           summary=f"Images over {th.image_warn_kb} KB (FAIL above {th.image_fail_kb} KB)"))
 
         # oversized vs display
-        measured = []
-        over = []
+        measured = set()
+        over_pairs = []
         for p, i in instances:
             a = assets.get(i.src)
             dw = _display_w(i)
             if a is None or not a.intrinsic_w or not dw or a.format == "svg":
                 continue
-            measured.append(i)
+            measured.add(i.src)
             if a.intrinsic_w > th.image_oversize_ratio * dw and a.intrinsic_w > 400 and not i.has_srcset:
-                target = min(a.intrinsic_w, dw * 2)
-                over.append(FindingItem(p.url, {"src": i.src, "intrinsic_w": a.intrinsic_w, "display_w": dw,
-                                                "display_source": "rendered" if i.rendered_w else "width attribute"},
-                                        generated_fix={"type": "resize", "target_width": target,
-                                                       "note": f"Resize to {target}px wide (2× display) or add srcset"}))
+                over_pairs.append((p, i))
+
+        def _over_ev(p, i):
+            return {"intrinsic_w": assets[i.src].intrinsic_w, "display_w": _display_w(i),
+                    "display_source": "rendered" if i.rendered_w else "width attribute"}
+
+        def _over_fix(p, i):
+            target = min(assets[i.src].intrinsic_w, _display_w(i) * 2)
+            return {"type": "resize", "target_width": target,
+                    "note": f"Resize to {target}px wide (2× display) or add srcset"}
+        over = group_by_image(over_pairs, _over_ev, _over_fix)
         if not measured:
             out.append(self.not_checked("img.oversized_dimensions",
                                         "Display sizes unknown: no rendered measurements or width attributes"))
@@ -190,48 +216,50 @@ class ImageSEO(CheckModule):
                 inst = [i for p, i in instances if i.src == s]
                 if inst and all(i.modern_source for i in inst):
                     continue
-                legacy.append(FindingItem(uses[s][0], {"src": s, "format": a.format, "kb": round((a.bytes or 0) / 1024)},
+                legacy.append(FindingItem(uses[s][0], {"src": s, "format": a.format, "kb": round((a.bytes or 0) / 1024),
+                                                       "pages": len(uses[s])},
                                           generated_fix={"type": "command",
-                                                         "code": f"cwebp -q 80 input.{a.format} -o output.webp"}))
+                                                         "code": f"cwebp -q 80 input.{a.format} -o output.webp"},
+                                          also_on=uses[s][1:]))
         if not fmt_known:
             out.append(self.not_checked("img.legacy_format", "No image formats could be detected"))
         else:
             out.append(self.by_population("img.legacy_format", legacy, len(fmt_known), fail=False,
                                           summary="JPEG/PNG/GIF images that could be WebP/AVIF"))
 
-        nodim = []
-        for p, i in instances:
-            if i.width_attr is None or i.height_attr is None:
-                a = assets.get(i.src)
-                fix = None
-                if a and a.intrinsic_w and a.intrinsic_h:
-                    fix = {"type": "html_attrs", "code": f'width="{a.intrinsic_w}" height="{a.intrinsic_h}"'}
-                nodim.append(FindingItem(p.url, {"src": i.src, "width": i.width_attr, "height": i.height_attr},
-                                         generated_fix=fix))
-        out.append(self.by_population("img.missing_dimensions", nodim, n_inst, fail=False,
+        def _dim_fix(p, i):
+            a = assets.get(i.src)
+            if a and a.intrinsic_w and a.intrinsic_h:
+                return {"type": "html_attrs", "code": f'width="{a.intrinsic_w}" height="{a.intrinsic_h}"'}
+            return None
+        nodim = group_by_image([(p, i) for p, i in instances if i.width_attr is None or i.height_attr is None],
+                               lambda p, i: {"width": i.width_attr, "height": i.height_attr}, _dim_fix)
+        out.append(self.by_population("img.missing_dimensions", nodim, n_uniq, fail=False,
                                       summary="Images without explicit width and height"))
 
-        lazy_missing, lazy_top = [], []
+        lazy_pairs, lazy_top = [], []
         for p in pages:
             imgs = [i for i in p.images if not _tiny(i, assets.get(i.src))]
             for idx, i in enumerate(imgs):
                 below = (i.above_fold is False) if i.above_fold is not None else idx >= 3
                 lazy = (i.loading or "").lower() == "lazy"
                 if below and not lazy:
-                    lazy_missing.append(FindingItem(p.url, {"src": i.src, "position": idx,
-                                                            "fold_source": "rendered" if i.above_fold is not None else "position heuristic"}))
+                    lazy_pairs.append((p, i))
             if imgs:
                 first = imgs[0]
                 top = first.above_fold if first.above_fold is not None else True
                 if top and (first.loading or "").lower() == "lazy":
                     lazy_top.append(FindingItem(p.url, {"src": first.src, "loading": first.loading}))
-        out.append(self.by_population("img.lazy_missing", lazy_missing, n_inst, fail=False,
+        lazy_missing = group_by_image(lazy_pairs, lambda p, i: {
+            "fold_source": "rendered" if i.above_fold is not None else "position heuristic (4th+ image)"})
+        out.append(self.by_population("img.lazy_missing", lazy_missing, n_uniq, fail=False,
                                       summary="Images likely below the fold without loading=\"lazy\""))
         out.append(self.by_population("img.lazy_above_fold", lazy_top, len([p for p in pages if p.images]),
                                       fail=False, summary="First image on the page is lazy-loaded"))
 
         checked = [s for s in uniq if s in assets and (assets[s].status is not None)]
-        broken = [FindingItem(uses[s][0], {"src": s, "status": assets[s].status, "used_on": uses[s][:5]})
+        broken = [FindingItem(uses[s][0], {"src": s, "status": assets[s].status, "pages": len(uses[s])},
+                              also_on=uses[s][1:])
                   for s in checked if assets[s].status and assets[s].status >= 400 and assets[s].status not in (401, 403, 429)]
         out.append(self.by_population("img.broken", broken, len(checked), summary="Image URLs return errors")
                    if checked else self.not_applicable("img.broken", "No images checked"))

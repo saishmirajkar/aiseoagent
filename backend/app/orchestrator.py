@@ -71,7 +71,7 @@ def _finding_rows(audit_id: int, module: CheckModule, results: list[CheckResult]
     rows = []
     for r in results:
         items = [i.as_dict() for i in r.items]
-        urls = sorted({i.url for i in r.items if i.url})[:MAX_URLS_PER_FINDING]
+        urls = sorted({u for i in r.items for u in [i.url, *i.also_on] if u})[:MAX_URLS_PER_FINDING]
         label = None
         if r.spec.missing_label and r.status.value in ("FAIL", "WARNING"):
             label = r.spec.missing_label

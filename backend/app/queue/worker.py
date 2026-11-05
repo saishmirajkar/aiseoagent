@@ -154,6 +154,8 @@ def _with_db(fn):
 
 def main() -> None:
     logging.basicConfig(level=env().log_level, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    for noisy in ("httpx", "httpcore", "apscheduler.executors.default"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)  # one line per request is too much
     asyncio.run(Worker().run())
 
 

@@ -113,3 +113,13 @@ def test_platform_generated_filenames_not_blamed():
     mixed = site([page("/", images=[img(fr), img("/i/IMG_0001.jpg")])])
     r2 = run(IMG, ctx(mixed))
     assert r2["img.filename"].affected == 1 and "Framer" in r2["img.filename"].summary
+
+
+def test_shared_image_is_one_finding_listing_all_pages():
+    logo = dict(alt=None, in_link=True, link_text_empty=True)
+    pages = [page("/", images=[img("/logo.png", **logo)], links=[link("/a"), link("/b")]),
+             page("/a", images=[img("/logo.png", **logo)]), page("/b", images=[img("/logo.png", **logo)])]
+    r = run(IMG, ctx(site(pages)))["img.alt_missing"]
+    assert r.affected == 1 and len(r.items) == 1
+    item = r.items[0]
+    assert item.evidence["pages"] == 3 and {item.url, *item.also_on} == {BASE + "/", BASE + "/a", BASE + "/b"}

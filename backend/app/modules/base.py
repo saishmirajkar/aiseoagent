@@ -88,11 +88,14 @@ class FindingItem:
     url: str | None
     evidence: Any
     generated_fix: Any | None = None
+    also_on: list[str] = field(default_factory=list)  # other pages with the same issue (e.g. a shared image)
 
     def as_dict(self) -> dict:
         d = {"url": self.url, "evidence": self.evidence}
         if self.generated_fix is not None:
             d["generated_fix"] = self.generated_fix
+        if self.also_on:
+            d["also_on"] = self.also_on[:500]
         return d
 
 

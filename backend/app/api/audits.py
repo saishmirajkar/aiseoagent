@@ -171,7 +171,7 @@ def get_page(audit_id: int, page_id: int, db: Session = Depends(get_db)) -> dict
     page_findings = []
     for f in sorted(findings, key=lambda f: (STATUS_ORDER.get(f.status, 9), -f.priority)):
         d = finding_dict(f)
-        d["items"] = [i for i in f.items if i.get("url") == p.url]
+        d["items"] = [i for i in f.items if i.get("url") == p.url or p.url in (i.get("also_on") or [])]
         page_findings.append(d)
     images = db.execute(select(Image).where(Image.page_id == page_id).limit(300)).scalars().all()
     links = db.execute(select(Link).where(Link.source_page_id == page_id).limit(500)).scalars().all()
