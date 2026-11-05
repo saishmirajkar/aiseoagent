@@ -90,9 +90,12 @@ class CrawlingIndexing(CheckModule):
         elif st is not None and 400 <= st < 500:
             fix = {"type": "file", "path": "/robots.txt",
                    "content": "User-agent: *\nDisallow:\n\n" + (f"Sitemap: {f.origin}/sitemap.xml\n")}
-            out.append(self.result("crawl.robots_txt", Status.WARNING, f"robots.txt returns {st} (no rules)",
-                                   items=[FindingItem(f.robots.get("url"), {"status": st})], generated_fix=fix,
-                                   impact=L))
+            note = f.robots.get("note")
+            out.append(self.result("crawl.robots_txt", Status.WARNING,
+                                   note or f"robots.txt returns {st} (no rules)",
+                                   items=[FindingItem(f.robots.get("url"),
+                                                      {"status": f.robots.get("http_status", st), "note": note})],
+                                   generated_fix=fix, impact=L, affected=1))
         else:
             out.append(self.result("crawl.robots_txt", Status.FAIL,
                                    "robots.txt is unreachable (5xx/timeout): Google pauses crawling",
@@ -156,9 +159,11 @@ class CrawlingIndexing(CheckModule):
                                           for s in f.sitemaps]))
         else:
             out.append(self.result("crawl.sitemap_present", Status.FAIL, "No XML sitemap found",
-                                   items=[FindingItem(None, {"checked": [s["url"] for s in f.sitemaps] or
-                                                             ["robots.txt Sitemap: lines", "/sitemap.xml",
-                                                              "/sitemap_index.xml"]})],
+                                   items=[FindingItem(None, {
+                                       "checked": [s["url"] for s in f.sitemaps] or
+                                       ["robots.txt Sitemap: lines", "/sitemap.xml", "/sitemap_index.xml",
+                                        "/sitemap-index.xml", "/wp-sitemap.xml"],
+                                       "returned_html_not_xml": f.sitemap_soft_404_probes})],
                                    generated_fix={"type": "file", "path": "/sitemap.xml",
                                                   "content": _sitemap_xml(indexable_urls),
                                                   "note": "Built from the indexable pages found in this crawl"},

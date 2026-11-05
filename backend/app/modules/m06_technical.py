@@ -85,6 +85,11 @@ class TechnicalAudit(CheckModule):
         CheckSpec("tech.url_variants", "Duplicate URL variants (www / trailing slash)", M, L,
                   "When several URL variants return 200, signals split across duplicates.",
                   "301-redirect all variants to one preferred host and URL format."),
+        CheckSpec("tech.soft_404", "Soft 404s (missing pages return 200)", M, M,
+                  "If URLs that do not exist return 200, search engines index error/duplicate pages and "
+                  "cannot tell real pages from mistakes.",
+                  "Return HTTP 404 (or 410) for unknown URLs; for single-page apps configure the host's "
+                  "fallback to send a 404 status for unknown routes."),
         CheckSpec("tech.viewport", "Missing or incorrect viewport meta tag", H, L,
                   "Without a responsive viewport the page fails mobile-friendliness (mobile-first indexing).",
                   "Add <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">.",
@@ -252,6 +257,7 @@ class TechnicalAudit(CheckModule):
                                       summary="HTTPS pages load HTTP resources") if https_pages
                    else self.not_applicable("tech.mixed_content", "Site is not served over HTTPS (see HTTPS check)"))
         out.append(self._variants(ctx))
+        out.append(self._soft_404(ctx))
 
         vp_tag = '<meta name="viewport" content="width=device-width, initial-scale=1">'
         vp = []
@@ -371,6 +377,26 @@ class TechnicalAudit(CheckModule):
                                                "https_probe": h.get("https_probe"),
                                                "https_error": h.get("https_error")})],
                            affected=1)
+
+    def _soft_404(self, ctx: AuditContext) -> CheckResult:
+        s = ctx.site.facts.variants.get("soft_404")
+        if not s:
+            return self.not_checked("tech.soft_404", "Soft-404 probe was not run")
+        if s.get("status") is None:
+            return self.not_checked("tech.soft_404", f"Probe request failed: {s.get('error')}")
+        ev = {k: s.get(k) for k in ("probe", "status", "final_url", "redirects", "same_as_homepage")}
+        if s["status"] in (404, 410):
+            return self.result("tech.soft_404", Status.PASS, f"Unknown URLs return {s['status']}",
+                               items=[FindingItem(None, ev)])
+        if s["status"] == 200:
+            what = "the homepage" if s.get("same_as_homepage") else "a page"
+            how = "after a redirect" if s.get("redirects") else "directly"
+            return self.result("tech.soft_404", Status.FAIL,
+                               f"A non-existent URL returns HTTP 200 with {what} ({how})",
+                               items=[FindingItem(s["probe"], ev)], affected=1)
+        return self.result("tech.soft_404", Status.WARNING,
+                           f"A non-existent URL returns HTTP {s['status']} (expected 404/410)",
+                           items=[FindingItem(s["probe"], ev)], affected=1)
 
     def _variants(self, ctx: AuditContext) -> CheckResult:
         v = ctx.site.facts.variants

@@ -28,6 +28,7 @@ class ImageRec:
     has_srcset: bool = False
     modern_source: bool = False  # <picture><source type="image/webp|avif">
     in_link: bool = False
+    link_text_empty: bool = False  # the enclosing <a> has no text/aria-label of its own
     rendered_w: int | None = None
     rendered_h: int | None = None
     above_fold: bool | None = None
@@ -157,6 +158,7 @@ class SiteFacts:
     sitemap_found: bool = False
     sitemap_url_count: int = 0
     sitemap_truncated: bool = False
+    sitemap_soft_404_probes: list[str] = field(default_factory=list)
     llms_txt: dict[str, Any] = field(default_factory=dict)
     https: dict[str, Any] = field(default_factory=dict)
     variants: dict[str, Any] = field(default_factory=dict)

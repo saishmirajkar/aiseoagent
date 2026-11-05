@@ -33,6 +33,7 @@ class SitemapResult:
     files: list[SitemapFile] = field(default_factory=list)
     urls: dict[str, str | None] = field(default_factory=dict)  # url -> lastmod
     truncated: bool = False
+    soft_404_probes: list[str] = field(default_factory=list)
 
     @property
     def found(self) -> bool:
@@ -150,8 +151,10 @@ async def collect_sitemaps(fetcher: Fetcher, origin: str, robots_sitemaps: list[
         seen.add(url)
         remaining = max(0, max_urls - len(result.urls))
         sf, locs = await _parse_one(fetcher, url, remaining or 1, source)
-        if source == "fallback" and sf.status != 200:
-            continue  # only report fallback probes that exist
+        if source == "fallback" and (sf.status != 200 or sf.kind not in ("urlset", "sitemapindex")):
+            if sf.status == 200:
+                result.soft_404_probes.append(url)  # 200 but not a sitemap (e.g. SPA fallback page)
+            continue  # only report fallback probes that are real sitemaps
         result.files.append(sf)
         if sf.truncated and sf.kind == "urlset":
             result.truncated = True

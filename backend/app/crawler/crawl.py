@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import itertools
+import secrets
 import logging
 import time
 from collections import Counter
@@ -149,13 +150,18 @@ class Crawler:
 
         # robots.txt
         rr = await f.fetch(origin + "/robots.txt", max_bytes=512_000)
-        self.robots = build_robots(origin + "/robots.txt", rr.status,
-                                   rr.text() if rr.status == 200 else "", rr.error)
+        rtext = rr.text() if rr.status == 200 else ""
+        robots_status, robots_note = rr.status, None
+        if rr.status == 200 and (rr.is_html or rtext.lstrip()[:15].lower().startswith(("<!doctype", "<html"))):
+            # served an HTML page (SPA fallback / soft 404): there is no real robots.txt
+            robots_status, robots_note, rtext = 404, "robots.txt URL returns an HTML page (HTTP 200)", ""
+        self.robots = build_robots(origin + "/robots.txt", robots_status, rtext, rr.error)
         f.allow = self._allowed
         delay = self.robots.crawl_delay(self.ua_token)
         if delay:
             self.limiter.set_min_interval(host, min(delay, 10.0))
         facts.robots = {"url": self.robots.url, "status": self.robots.status, "error": self.robots.error,
+                        "http_status": rr.status, "note": robots_note,
                         "size": len(self.robots.text), "sitemaps": self.robots.sitemaps,
                         "crawl_delay": delay, "text": self.robots.text[:20_000],
                         "groups": [{"agents": g.agents, "rules": g.rules[:200]} for g in self.robots.groups][:50]}
@@ -175,6 +181,7 @@ class Crawler:
         facts.sitemap_found = sm.found
         facts.sitemap_url_count = len(sm.urls)
         facts.sitemap_truncated = sm.truncated
+        facts.sitemap_soft_404_probes = sm.soft_404_probes
 
         # BFS crawl
         queue: asyncio.PriorityQueue = asyncio.PriorityQueue()
@@ -434,16 +441,16 @@ class Crawler:
                        "hsts": res.headers.get("strict-transport-security")}
         variants: dict = {}
         if parts.scheme == "https":
-            r = await f.check(f"http://{parts.netloc}/")
+            r = await f.check(f"http://{parts.netloc}/", retries=0)
             https["http_redirects_to_https"] = bool(r.final_url and r.final_url.startswith("https://"))
             https["http_probe"] = {"status": r.status, "final_url": r.final_url, "hops": len(r.chain), "error": r.error}
         else:
-            r = await f.check(f"https://{parts.netloc}/")
+            r = await f.check(f"https://{parts.netloc}/", retries=0)
             https["https_available"] = r.status is not None and r.status < 400
             https["https_probe"] = {"status": r.status, "final_url": r.final_url, "error": r.error}
         is_ip = host.replace(".", "").isdigit() or ":" in host or host == "localhost"
         alt_host = toggle_www(host)
-        r = await f.check(f"{parts.scheme}://{alt_host}/") if not is_ip else None
+        r = await f.check(f"{parts.scheme}://{alt_host}/", retries=0) if not is_ip else None
         variants["www"] = {"skipped": "IP/localhost host"} if r is None else {
             "variant": f"{parts.scheme}://{alt_host}/", "status": r.status, "final_url": r.final_url,
             "error": r.error, "resolves": r.status is not None,
@@ -455,11 +462,17 @@ class Crawler:
             sp = urlsplit(sample.url)
             path = sp.path[:-1] if sp.path.endswith("/") else sp.path + "/"
             vurl = urlunsplit((sp.scheme, sp.netloc, path, "", ""))
-            r = await f.check(vurl)
+            r = await f.check(vurl, retries=0)
             dup = r.status == 200 and not r.chain
             variants["trailing_slash"] = {"page": sample.url, "variant": vurl, "status": r.status,
                                           "final_url": r.final_url, "redirects": len(r.chain),
                                           "duplicate": dup, "page_canonical": sample.canonical_target}
+        # soft 404: does a URL that cannot exist return 200?
+        probe = f"{parts.scheme}://{parts.netloc}/seo-inspector-check-{secrets.token_hex(6)}"
+        r = await f.fetch(probe, html_only=True, max_bytes=300_000, retries=0)
+        variants["soft_404"] = {"probe": probe, "status": r.status, "final_url": r.final_url,
+                                "redirects": len(r.chain), "error": r.error,
+                                "same_as_homepage": bool(r.body) and r.body == res.body[:300_000]}
         return https, variants
 
 

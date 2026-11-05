@@ -66,7 +66,9 @@ def test_filename_heuristic():
 def test_image_checks():
     imgs = [
         img("/i/IMG_1234.jpg", alt=None, width_attr=400, height_attr=None, loading="lazy"),
-        img("/i/hero.webp", alt="", in_link=True),
+        img("/i/hero.webp", alt="", in_link=True, link_text_empty=True),
+        img("/i/deco.webp", alt=""),                                  # decorative: not flagged
+        img("/i/named.webp", alt="", in_link=True, link_text_empty=False),  # link has text: fine
         img("/i/ok.webp"), img("/i/ok2.webp"),
         img("/i/big.png", rendered_w=300),
         img("/i/pixel.gif", alt=None, width_attr=1, height_attr=1),
@@ -81,7 +83,8 @@ def test_image_checks():
     }
     r = run(IMG, ctx(site([page("/", images=imgs)], images=assets)))
     assert r["img.alt_missing"].affected == 1  # tracking pixel ignored
-    assert r["img.alt_empty"].status == Status.WARNING
+    assert r["img.alt_empty"].status == Status.WARNING and urls(r["img.alt_empty"]) == {BASE + "/"}
+    assert r["img.alt_empty"].affected == 1 and "hero.webp" in str(r["img.alt_empty"].items)
     assert "IMG_1234.jpg" in str(r["img.filename"].items)
     fs = r["img.file_size"]
     assert fs.status == Status.FAIL and fs.affected == 2 and fs.items[0].evidence["kb"] > 500
@@ -100,3 +103,13 @@ def test_images_none():
     r = run(IMG, ctx(site([page("/")])))
     assert r["img.alt_missing"].status == Status.NOT_APPLICABLE
     assert r["img.file_size"].status == Status.NOT_APPLICABLE
+
+
+def test_platform_generated_filenames_not_blamed():
+    fr = "https://framerusercontent.com/images/5YNvxTDyGOu7IYItPcmRGgKeoyo.png"
+    s = site([page("/", images=[img(fr)])], images={fr: asset(fr, bytes=1000, format="png")})
+    r = run(IMG, ctx(s))
+    assert r["img.filename"].status == Status.NOT_APPLICABLE and "Framer" in r["img.filename"].reason
+    mixed = site([page("/", images=[img(fr), img("/i/IMG_0001.jpg")])])
+    r2 = run(IMG, ctx(mixed))
+    assert r2["img.filename"].affected == 1 and "Framer" in r2["img.filename"].summary

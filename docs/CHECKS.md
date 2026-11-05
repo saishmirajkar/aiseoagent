@@ -36,7 +36,7 @@ _Not built yet; planned for build phase 2. Reported as NOT_CHECKED._
 | Check ID | Check | Impact | Effort | Fix |
 |---|---|---|---|---|
 | `img.alt_missing` | Images missing alt attribute | Med | Low | Add descriptive alt text (what the image shows, in context). |
-| `img.alt_empty` | Empty alt on meaningful images | Low | Low | Describe content images and image links; keep alt="" only for decorative images. |
+| `img.alt_empty` | Image links with empty alt (link has no text) | Med | Low | Give the image an alt that describes the link target (e.g. "Genesis TS22 kart"). |
 | `img.filename` | Non-descriptive image file names | Low | Med | Rename files to short descriptive slugs (e.g. red-leather-sofa.jpg) and update references. |
 | `img.file_size` | Heavy image files | Med | Med | Compress and resize; serve WebP/AVIF at the displayed size. |
 | `img.oversized_dimensions` | Images much larger than their display size | Med | Med | Resize to ~2× the display width and use srcset/sizes for responsive images. |
@@ -67,6 +67,7 @@ _Not built yet; planned for build phase 2. Reported as NOT_CHECKED._
 | `tech.https` | HTTPS and HTTP→HTTPS redirect | High | Med | Serve the site over HTTPS and 301-redirect every HTTP URL to its HTTPS version. |
 | `tech.mixed_content` | Mixed content on HTTPS pages | Med | Low | Load every resource over HTTPS (update URLs or use protocol-relative/HTTPS sources). |
 | `tech.url_variants` | Duplicate URL variants (www / trailing slash) | Med | Low | 301-redirect all variants to one preferred host and URL format. |
+| `tech.soft_404` | Soft 404s (missing pages return 200) | Med | Med | Return HTTP 404 (or 410) for unknown URLs; for single-page apps configure the host's fallback to send a 404 status for unknown routes. |
 | `tech.viewport` | Missing or incorrect viewport meta tag | High | Low | Add <meta name="viewport" content="width=device-width, initial-scale=1">. |
 | `tech.lang` | Missing html lang attribute | Low | Low | Add lang to the <html> element, e.g. <html lang="en">. |
 | `tech.slow_response` | Slow server response | Med | Med | Add caching (page/CDN), optimize backend queries, or upgrade hosting. |

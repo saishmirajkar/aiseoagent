@@ -243,10 +243,12 @@ def parse_page(page: PageData, html: str, scope: SiteScope) -> ShellSignals:
                 if (_attr(s, "type") or "").lower() in ("image/webp", "image/avif"):
                     modern = True
         in_link = False
+        link_text_empty = False
         p = img.parent
         while p is not None and p.tag not in ("body", "html"):
             if p.tag == "a":
                 in_link = True
+                link_text_empty = not (_clean(p.text(deep=True)) or _attr(p, "aria-label") or _attr(p, "title"))
                 break
             p = p.parent
         page.images.append(ImageRec(
@@ -254,7 +256,7 @@ def parse_page(page: PageData, html: str, scope: SiteScope) -> ShellSignals:
             filename=filename_of(absrc), width_attr=_int(_attr(img, "width")),
             height_attr=_int(_attr(img, "height")), loading=(_attr(img, "loading") or None),
             position=i, has_srcset=bool(_attr(img, "srcset") or _attr(img, "data-srcset")),
-            modern_source=modern, in_link=in_link))
+            modern_source=modern, in_link=in_link, link_text_empty=link_text_empty))
 
     # ------------------------------------------------------------- mixed content & resources
     page.mixed_content = []

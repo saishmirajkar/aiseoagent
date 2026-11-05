@@ -155,3 +155,22 @@ def test_probe_image_streams_and_sizes():
     assert (r.format, r.width, r.height, r.bytes, r.bytes_exact) == ("png", 1000, 500, len(data), True)
     missing = run(probe_image(f, "https://ex.com/404.png"))
     assert missing.status == 404 and missing.error
+
+
+def test_sitemap_fallback_html_is_soft_404_not_error():
+    def h(req):  # SPA host: every path returns the homepage
+        return httpx.Response(200, text="<!doctype html><html><body>app</body></html>",
+                              headers={"content-type": "text/html"})
+    res = run(collect_sitemaps(make_fetcher(h), "https://ex.com", [], 1000))
+    assert res.files == [] and not res.found
+    assert "https://ex.com/sitemap.xml" in res.soft_404_probes
+
+
+def test_check_does_not_retry_get_after_connect_error():
+    calls = []
+
+    def h(req):
+        calls.append(req.method)
+        raise httpx.ConnectError("Name or service not known", request=req)
+    r = run(make_fetcher(h, retries=0).check("https://nope.ex.com/"))
+    assert r.status is None and calls == ["HEAD"]

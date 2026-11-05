@@ -131,8 +131,10 @@ class Fetcher:
         assert self._client is not None, "use 'async with Fetcher(...)'"
         return self._client
 
-    async def _send(self, method: str, url: str, headers: dict | None) -> tuple[httpx.Response, int]:
+    async def _send(self, method: str, url: str, headers: dict | None,
+                    retries: int | None = None) -> tuple[httpx.Response, int]:
         """One request (no redirects) with retries. Returns an open streaming response."""
+        max_retries = self.retries if retries is None else retries
         attempt = 0
         while True:
             await self.limiter.wait(url)
@@ -142,13 +144,13 @@ class Fetcher:
                 req = self.client.build_request(method, url, headers=headers)
                 resp = await self.client.send(req, stream=True)
             except (httpx.TransportError, httpx.InvalidURL) as e:
-                if attempt >= self.retries or isinstance(e, httpx.InvalidURL):
+                if attempt >= max_retries or isinstance(e, httpx.InvalidURL):
                     raise
                 attempt += 1
                 await asyncio.sleep(2 ** (attempt - 1) + random.random() * 0.3)
                 continue
             elapsed = int((time.perf_counter() - t0) * 1000)
-            if resp.status_code in RETRY_STATUSES and attempt < self.retries:
+            if resp.status_code in RETRY_STATUSES and attempt < max_retries:
                 wait = max(_retry_after(resp), 2 ** attempt)
                 await resp.aclose()
                 attempt += 1
@@ -157,13 +159,13 @@ class Fetcher:
             return resp, elapsed
 
     async def _follow(self, url: str, method: str, headers: dict | None,
-                      follow: bool) -> tuple[FetchResult, httpx.Response | None]:
+                      follow: bool, retries: int | None = None) -> tuple[FetchResult, httpx.Response | None]:
         result = FetchResult(url=url, final_url=url)
         current = url
         seen = {url}
         for _ in range(MAX_REDIRECTS + 1):
             try:
-                resp, elapsed = await self._send(method, current, headers)
+                resp, elapsed = await self._send(method, current, headers, retries)
             except httpx.TimeoutException:
                 result.error = "timeout"
                 return result, None
@@ -198,9 +200,9 @@ class Fetcher:
 
     async def fetch(self, url: str, *, method: str = "GET", read_body: bool = True,
                     max_bytes: int | None = None, headers: dict | None = None,
-                    follow: bool = True, html_only: bool = False) -> FetchResult:
+                    follow: bool = True, html_only: bool = False, retries: int | None = None) -> FetchResult:
         """Fetch a URL. With ``html_only`` the body is only read for HTML responses."""
-        result, resp = await self._follow(url, method, headers, follow)
+        result, resp = await self._follow(url, method, headers, follow, retries)
         if resp is None:
             return result
         cap = max_bytes or self.max_bytes
@@ -236,11 +238,16 @@ class Fetcher:
             if resp is not None:
                 await resp.aclose()
 
-    async def check(self, url: str) -> FetchResult:
-        """Status check for link validation: HEAD, falling back to GET when HEAD is refused."""
-        r = await self.fetch(url, method="HEAD", read_body=False)
-        if r.error or r.status in (400, 403, 405, 406, 501) or r.status is None:
-            r2 = await self.fetch(url, method="GET", read_body=False)
+    async def check(self, url: str, retries: int | None = None) -> FetchResult:
+        """Status check for link validation: HEAD, falling back to GET when HEAD is refused.
+
+        No GET fallback after a connection failure (DNS, refused): it would fail the same way.
+        """
+        r = await self.fetch(url, method="HEAD", read_body=False, retries=retries)
+        if r.status is None and r.error and "timeout" not in r.error:
+            return r
+        if r.status is None or r.status in (400, 403, 405, 406, 501):
+            r2 = await self.fetch(url, method="GET", read_body=False, retries=retries)
             if r2.status is not None or not r.status:
                 return r2
         return r

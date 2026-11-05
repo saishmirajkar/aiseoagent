@@ -129,3 +129,15 @@ def test_js_dependency_and_render_mismatch():
     r = run(M, ctx(s))
     assert r["tech.js_dependent"].status == Status.WARNING
     assert r["tech.render_mismatch"].items[0].evidence["title"] == {"raw": "Old", "rendered": "New"}
+
+
+def test_soft_404():
+    probe = BASE + "/seo-inspector-check-abc"
+    ok = site([home()], variants={"soft_404": {"probe": probe, "status": 404}})
+    assert run(M, ctx(ok))["tech.soft_404"].status == Status.PASS
+    bad = site([home()], variants={"soft_404": {"probe": probe, "status": 200, "same_as_homepage": True,
+                                                "redirects": 0}})
+    r = run(M, ctx(bad))["tech.soft_404"]
+    assert r.status == Status.FAIL and "homepage" in r.summary
+    err = site([home()], variants={"soft_404": {"probe": probe, "status": None, "error": "timeout"}})
+    assert run(M, ctx(err))["tech.soft_404"].status == Status.NOT_CHECKED

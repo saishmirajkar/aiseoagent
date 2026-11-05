@@ -87,3 +87,12 @@ def test_js_shell_detection():
     assert sig.looks_like_shell
     _, sig2 = parsed(html="<html><body><noscript>Please enable JavaScript</noscript></body></html>")
     assert sig2.looks_like_shell
+
+
+def test_image_link_text_detection():
+    html = ('<html><body><a href="/a"><img src="/1.png" alt=""></a>'
+            '<a href="/b"><img src="/2.png" alt="">Shop karts</a>'
+            '<a href="/c" aria-label="Contact"><img src="/3.png" alt=""></a></body></html>')
+    p, _ = parsed(html=html)
+    flags = {i.filename: i.link_text_empty for i in p.images}
+    assert flags == {"1.png": True, "2.png": False, "3.png": False}
