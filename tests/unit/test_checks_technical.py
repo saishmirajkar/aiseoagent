@@ -141,3 +141,16 @@ def test_soft_404():
     assert r.status == Status.FAIL and "homepage" in r.summary
     err = site([home()], variants={"soft_404": {"probe": probe, "status": None, "error": "timeout"}})
     assert run(M, ctx(err))["tech.soft_404"].status == Status.NOT_CHECKED
+
+
+def test_external_links_unverified_are_not_a_pass():
+    ext = [f"https://other.com/{i}" for i in range(3)]
+    s = site([home(links=[link(u) for u in ext])],
+             url_status={u: UrlStatus(u, None, error="ProxyError: 403 Forbidden") for u in ext})
+    r = run(M, ctx(s))["tech.broken_external_links"]
+    assert r.status == Status.NOT_CHECKED and "3 external links" in r.reason
+    s2 = site([home(links=[link(u) for u in ext])],
+              url_status={ext[0]: UrlStatus(ext[0], 200), ext[1]: UrlStatus(ext[1], 404),
+                          ext[2]: UrlStatus(ext[2], None, error="timeout")})
+    r2 = run(M, ctx(s2))["tech.broken_external_links"]
+    assert r2.status == Status.WARNING and r2.total == 2 and "1 could not be verified" in r2.summary

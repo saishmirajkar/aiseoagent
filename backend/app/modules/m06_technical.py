@@ -14,6 +14,13 @@ H, M, L = Level.HIGH, Level.MED, Level.LOW
 UNVERIFIABLE = {401, 403, 429, 999}  # bot protection: cannot conclude the link is broken
 
 
+def _unverifiable(status: int | None, error: str | None) -> bool:
+    """We could not learn whether the link works (bot protection, our network, timeouts)."""
+    if status is not None:
+        return status in UNVERIFIABLE
+    return not _broken(status, error)
+
+
 def _broken(status: int | None, error: str | None) -> bool:
     if status is not None:
         return status in (404, 410) or status >= 500 or (400 <= status < 500 and status not in UNVERIFIABLE)
@@ -148,6 +155,7 @@ class TechnicalAudit(CheckModule):
         broken_by_page: dict[str, list[dict]] = defaultdict(list)
         ext_items: list[FindingItem] = []
         ext_total = 0
+        ext_unverified = 0
         for target, srcs in sources.items():
             st = site.status_of(target)
             if st is None:
@@ -160,19 +168,30 @@ class TechnicalAudit(CheckModule):
                     for s in srcs:
                         broken_by_page[s].append({"link": target, "status": final, "error": st.error})
             else:
+                code = final if final is not None else st.status
+                if _unverifiable(code, st.error):
+                    ext_unverified += 1
+                    continue
                 ext_total += 1
-                if _broken(final if final is not None else st.status, st.error):
+                if _broken(code, st.error):
                     ext_items.append(FindingItem(srcs[0], {"link": target, "status": st.status,
                                                            "error": st.error, "linked_from": srcs[:5]}))
         bil = [FindingItem(src, {"broken_links": v[:20], "count": len(v)}) for src, v in broken_by_page.items()]
         out.append(self.by_population("tech.broken_internal_links", bil, len(ok),
                                       summary=f"{sum(len(v) for v in broken_by_page.values())} broken internal link(s) "
                                               f"on {len(bil)} page(s)"))
-        r = self.by_population("tech.broken_external_links", ext_items, ext_total, fail=False,
-                               summary=f"{len(ext_items)} external link(s) return errors")
-        if r.status == Status.PASS and ext_total:
-            r.summary = f"{ext_total} external link(s) checked; none broken (bot-protected 401/403/429 not counted)"
-        out.append(r)
+        unv = (f"; {ext_unverified} could not be verified (blocked, bot-protected or timed out)"
+               if ext_unverified else "")
+        if ext_total == 0 and ext_unverified:
+            out.append(self.not_checked("tech.broken_external_links",
+                                        f"None of the {ext_unverified} external links could be verified "
+                                        "(network blocked, bot protection or timeouts)"))
+        else:
+            r = self.by_population("tech.broken_external_links", ext_items, ext_total, fail=False,
+                                   summary=f"{len(ext_items)} of {ext_total} verified external link(s) return errors{unv}")
+            if r.status == Status.PASS and ext_total:
+                r.summary = f"{ext_total} external link(s) verified; none broken{unv}"
+            out.append(r)
 
         # redirects
         chains, loops, link_redirects = [], [], defaultdict(list)
