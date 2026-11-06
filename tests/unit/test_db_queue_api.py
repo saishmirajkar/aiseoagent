@@ -167,3 +167,25 @@ def test_page_text_retention_keeps_last_n(db):
     kept = db.execute(select(Page.audit_id).join(PageText, PageText.page_id == Page.id)
                       .where(Page.audit_id.in_(ids))).scalars().all()
     assert sorted(kept) == ids[2:]
+
+
+def test_audit_marked_failed_when_job_fails_before_start(db, database_url, monkeypatch):
+    import asyncio
+    from app.db.models import Audit, Job, Site
+    from app.queue import jobs, worker
+    db.execute(text("DELETE FROM jobs"))
+    s = Site(domain=f"broken-{os.getpid()}.test")
+    db.add(s)
+    db.flush()
+    a = Audit(site_id=s.id, status="queued", input={"url": "https://x.test/"})
+    db.add(a)
+    db.flush()
+    jobs.enqueue(db, "audit", {"audit_id": a.id}, max_attempts=1)
+    db.commit()
+
+    async def boom(payload):
+        raise ImportError("cannot import name 'x'")
+    monkeypatch.setitem(worker.HANDLERS, "audit", boom)
+    assert asyncio.run(worker.Worker().run_one()) is True
+    db.refresh(a)
+    assert a.status == "failed" and "ImportError" in a.error

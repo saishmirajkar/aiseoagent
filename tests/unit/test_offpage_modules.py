@@ -243,3 +243,42 @@ def test_inlink_import_api(database_url, monkeypatch):
     assert got["release"] == "cc-main-2026-oct-nov-dec" and got["domains"] == {"c.com"}
     assert got["previous_release"] == "cc-main-2026-sep-oct-nov"  # only two releases kept
     env.cache_clear()
+
+
+# ------------------------------------------------------------------ Gemini (Vertex AI)
+def test_gemini_parse_and_cost(monkeypatch):
+    import asyncio
+    from app.providers import gemini as gm
+    recorded = []
+    monkeypatch.setattr(gm.usage, "record", lambda *a: recorded.append(a))
+    from tests.unit.helpers import offline_settings
+    g = gm.GeminiClient.__new__(gm.GeminiClient)
+    g.s, g.audit_id, g.usd = offline_settings(), 7, 0.0
+    resp = {"candidates": [{"content": {"parts": [{"text": "Top makers: Acme, Rival."}]}, "finishReason": "STOP",
+                            "groundingMetadata": {"webSearchQueries": ["go kart makers india"],
+                                                  "groundingChunks": [{"web": {"uri": "https://vertexaisearch.cloud.google.com/x",
+                                                                               "title": "acme.com"}}]}}],
+            "usageMetadata": {"promptTokenCount": 1000, "candidatesTokenCount": 500}}
+    a = asyncio.run(g._parse("ai_visibility.answer", resp, grounded=True))
+    assert a.text.startswith("Top makers") and a.cited_urls == ["https://acme.com"] and a.searched == 1
+    expected = (1000 * 0.30 + 500 * 2.50) / 1e6 + 0.035
+    assert abs(g.usd - expected) < 1e-9 and recorded[0][0] == "vertex_gemini"
+    blocked = {"candidates": [{"finishReason": "SAFETY"}], "usageMetadata": {}}
+    with pytest.raises(Exception, match="declined"):
+        asyncio.run(g._parse("t", blocked, grounded=False))
+
+
+def test_ai_visibility_with_two_engines(monkeypatch):
+    from app.modules import m16_ai_visibility as m16
+
+    class FakeGemini:
+        async def answer(self, *, task, prompt, grounded=True):
+            return Answer("Acme is a leading maker.", [], 1, "gemini-2.5-flash")
+    monkeypatch.setattr(m16, "make_gemini", lambda s, a: FakeGemini())
+    c = ctx(_site())
+    c.inputs.brand = "Acme"
+    c.llm = FakeLLM({"ai_visibility.prompts": {"prompts": ["best karts", "kart speed"]}},
+                    lambda p: Answer("Karts are fun.", [], 0, "claude-sonnet-5-5"))
+    vis = run(AIVisibility(), c)["ai.visibility"]
+    assert "by engine: Claude 0%, Gemini 100%" in vis.summary and "Brand mentioned in 50%" in vis.summary
+    assert any(s.startswith("Gemini (gemini-2.5-flash") for s in vis.sources)

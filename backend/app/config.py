@@ -173,6 +173,10 @@ class LLMSettings(BaseModel):
     competitor_pages: int = Field(5, ge=0, le=20, description="Pages fetched per competitor URL")
     cache_days: int = Field(30, ge=0, le=365)
     refusal_fallbacks: bool = Field(True, description="Server-side fallback when the reasoning model declines")
+    gemini_model: str = Field("gemini-2.5-flash", description="Vertex AI model for AI-visibility checks (verify availability)")
+    gemini_usd_per_m_input: float = Field(0.30, ge=0, description="Check current Vertex AI pricing")
+    gemini_usd_per_m_output: float = Field(2.50, ge=0, description="Check current Vertex AI pricing")
+    gemini_usd_per_grounded_request: float = Field(0.035, ge=0, description="Google Search grounding fee (check pricing)")
 
 
 class DataLayerSettings(BaseModel):

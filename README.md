@@ -264,7 +264,7 @@ Notes:
 | `BRAVE_API_KEY` | Search provider (keyword difficulty, backlinks, mentions, outreach) | api-dashboard.search.brave.com → subscribe to a plan → API Keys. |
 | `PAGESPEED_API_KEY` | Performance (Phase 2) | Google Cloud Console → enable *PageSpeed Insights API* → Credentials → API key (restrict it to that API). |
 | `IMPORT_API_TOKEN` | Colab inlinks import | Any long random string; paste the same value into the notebook. |
-| `GCP_SERVICE_ACCOUNT_JSON`, `GCP_PROJECT`, `GCP_LOCATION` | Gemini via Vertex AI, optional (Phase 4) | Google Cloud Console → enable *Vertex AI API* → IAM → service account with role *Vertex AI User* → Keys → JSON. Paste the whole JSON as the secret. |
+| `GCP_SERVICE_ACCOUNT_JSON`, `GCP_PROJECT`, `GCP_LOCATION` | Gemini via Vertex AI, optional (second engine in the AI-visibility test; model and prices in Settings → AI; $10/month cap) | Google Cloud Console → enable *Vertex AI API* → IAM → service account with role *Vertex AI User* → Keys → JSON. Paste the whole JSON as the secret. |
 | `GSC_SERVICE_ACCOUNT_JSON` | Search Console, optional | Service account JSON key; add the service-account e-mail as a user of the Search Console property. |
 | `GOOGLE_ADS_DEVELOPER_TOKEN`, `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN`, `GOOGLE_ADS_CUSTOMER_ID` | Keyword Planner volumes, optional | Google Ads manager account → API Center → developer token (*Basic access* is required for real data) + an OAuth client and refresh token. |
 | `GBP_SERVICE_ACCOUNT_JSON` | Google Business Profile, optional | Request Business Profile API access from Google, then use an account that manages the profile. |

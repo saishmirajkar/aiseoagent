@@ -18,6 +18,7 @@ from app.modules.base import (
 )
 from app.modules.m10_backlinks import brand_of
 from app.modules.m12_mentions import competitor_brand
+from app.providers.gemini import make_gemini
 
 H, M, L = Level.HIGH, Level.MED, Level.LOW
 PROMPT_SYSTEM = """You write realistic questions that potential customers would type into an AI assistant
@@ -128,30 +129,34 @@ class AIVisibility(CheckModule):
         comps = {competitor_brand(c): registered(host_of(c)) for c in ctx.inputs.competitors[:3]}
         sem = asyncio.Semaphore(3)
         runs: list[dict] = []
-        budget_note = None
+        budget_notes: dict[str, str] = {}
+        engines = {"Claude": lambda p: ctx.llm.answer(task="ai_visibility.answer", prompt=p, web_search=True, max_uses=2)}
+        gemini = make_gemini(ctx.settings, ctx.audit_id)
+        if gemini is not None:
+            engines["Gemini"] = lambda p: gemini.answer(task="ai_visibility.answer", prompt=p, grounded=True)
 
-        async def one(p: str, k: int) -> None:
-            nonlocal budget_note
+        async def one(engine: str, p: str, k: int) -> None:
             async with sem:
-                if budget_note:
+                if engine in budget_notes:
                     return
                 try:
-                    a = await ctx.llm.answer(task="ai_visibility.answer", prompt=p, web_search=True, max_uses=2)
+                    a = await engines[engine](p)
                 except BudgetExceeded as e:
-                    budget_note = str(e)
+                    budget_notes[engine] = str(e)
                     return
                 except LLMError as e:
-                    runs.append({"prompt": p, "run": k, "error": str(e)})
+                    runs.append({"engine": engine, "prompt": p, "run": k, "error": str(e)})
                     return
                 hosts = {registered(host_of(u)) for u in a.cited_urls}
-                runs.append({"prompt": p, "run": k, "model": a.model, "searches": a.searched,
+                runs.append({"engine": engine, "prompt": p, "run": k, "model": a.model, "searches": a.searched,
                              "brand_mentioned": mentioned(a.text, [brand, site_domain]),
                              "site_cited": any(h == site_domain or h.endswith("." + site_domain) for h in hosts),
                              "competitors": {c: mentioned(a.text, [c, d]) or d in hosts for c, d in comps.items()},
                              "excerpt": a.text[:400]})
 
-        await asyncio.gather(*(one(p, k) for p in prompts for k in range(1, b.ai_visibility_runs + 1)))
+        await asyncio.gather(*(one(e, p, k) for e in engines for p in prompts for k in range(1, b.ai_visibility_runs + 1)))
         ok = [r for r in runs if "error" not in r]
+        budget_note = "; ".join(f"{e}: {m}" for e, m in budget_notes.items()) or None
         if not ok:
             reason = budget_note or (runs[0]["error"] if runs else "No answers")
             return self.not_checked("ai.visibility", reason)
@@ -165,20 +170,27 @@ class AIVisibility(CheckModule):
             if not rs:
                 continue
             items.append(FindingItem(None, {"prompt": p, "runs": len(rs),
+                                            "engines": sorted({r["engine"] for r in rs}),
                                             "brand_mentioned": f"{sum(r['brand_mentioned'] for r in rs)}/{len(rs)}",
                                             "site_cited": f"{sum(r['site_cited'] for r in rs)}/{len(rs)}",
                                             **({"competitors_mentioned": {c: f"{sum(r['competitors'].get(c, False) for r in rs)}/{len(rs)}"
                                                                           for c in comps}} if comps else {}),
                                             "sample_answer": rs[0]["excerpt"]}))
         ctx.shared.setdefault("metrics", []).append(("ai_visibility", "runs", ok, "Claude with web search (sample)"))
-        model = ok[0]["model"]
+        per_engine = []
+        for e in engines:
+            er = [r for r in ok if r["engine"] == e]
+            if er:
+                per_engine.append(f"{e} {round(100 * sum(r['brand_mentioned'] for r in er) / len(er))}%")
         summary = (f"Brand mentioned in {round(100 * rate)}% and site cited in {round(100 * cite)}% of {n} answers "
-                   f"({len(prompts)} prompts × up to {b.ai_visibility_runs} runs)"
+                   f"({len(prompts)} prompts × up to {b.ai_visibility_runs} runs"
+                   + (f"; by engine: {', '.join(per_engine)}" if len(engines) > 1 else "") + ")"
                    + (f"; competitors: {', '.join(f'{c} {v}%' for c, v in comp_rates.items())}" if comp_rates else "")
                    + (f"; stopped early: {budget_note}" if budget_note else "")
                    + ". A sample, not a guarantee — AI answers vary.")
-        sources = [f"Claude ({model}) with web search — sample"]
-        sources.append("Gemini (Vertex AI): not configured" if not ctx.integrations.get("vertex_ai_gemini")
-                       else "Gemini (Vertex AI): configured, client not built in this phase")
+        models = {r["engine"]: r["model"] for r in ok}
+        sources = [f"Claude ({models.get('Claude', ctx.settings.llm.reasoning_model)}) with web search — sample"]
+        sources.append(f"Gemini ({models['Gemini']}, Vertex AI) with Google Search grounding — sample; cost estimated "
+                       "from configured prices" if "Gemini" in models else "Gemini (Vertex AI): not configured")
         return CheckResult(spec=self.spec("ai.visibility"), status=Status.PASS if rate >= 0.5 else Status.WARNING,
                            summary=summary, items=items, affected=0 if rate >= 0.5 else 1, sources=sources)

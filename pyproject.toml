@@ -22,6 +22,7 @@ dependencies = [
     "itsdangerous>=2.2",
     "playwright>=1.45",
     "anthropic>=2.6",
+    "google-auth>=2.30",
 ]
 
 [project.optional-dependencies]

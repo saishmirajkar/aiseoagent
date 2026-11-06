@@ -30,9 +30,9 @@ Handler = Callable[[dict], Awaitable[None]]
 
 
 async def _audit_handler(payload: dict) -> None:
-    from app.orchestrator import run_audit
     audit_id = int(payload["audit_id"])
     try:
+        from app.orchestrator import run_audit
         await run_audit(audit_id)
     except Exception as e:
         log.exception("Audit %s crashed", audit_id)
@@ -74,6 +74,20 @@ def enqueue_cc_ranks(force: bool = False) -> int | None:
         if busy:
             return None
         return jobs.enqueue(db, "cc_ranks", {}, priority=-1, max_attempts=2).id
+
+
+def _mark_audit(audit_id, state: str, e: Exception) -> None:
+    """Keep the audit row in step with its job: queued again on retry, failed when attempts run out."""
+    if audit_id is None:
+        return
+    with session_scope() as db:
+        if state == "failed":
+            db.execute(update(Audit).where(Audit.id == int(audit_id)).values(
+                status="failed", error=f"Internal error: {type(e).__name__}: {e}"[:2000],
+                finished_at=datetime.now(timezone.utc)))
+        else:
+            db.execute(update(Audit).where(Audit.id == int(audit_id), Audit.status != "cancelled").values(
+                status="queued", progress={"stage": "queued", "message": f"Retrying after an error: {e}"[:300]}))
 
 
 def _cleanup_cache() -> None:
@@ -127,6 +141,8 @@ class Worker:
             err = f"{type(e).__name__}: {e}\n{traceback.format_exc()}"
             state = await asyncio.to_thread(lambda: _with_db(lambda db: jobs.fail(db, job, err)))
             log.error("Job %s failed (%s): %s", job.id, state, e)
+            if job.type == "audit":
+                await asyncio.to_thread(_mark_audit, job.payload.get("audit_id"), state, e)
         else:
             await asyncio.to_thread(lambda: _with_db(lambda db: jobs.complete(db, job.id)))
             log.info("Job %s done", job.id)
