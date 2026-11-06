@@ -46,7 +46,34 @@ async def _audit_handler(payload: dict) -> None:
         raise
 
 
-HANDLERS: dict[str, Handler] = {"audit": _audit_handler}
+async def _cc_ranks_handler(payload: dict) -> None:
+    from app.datalayer.authority import load_release
+    from app.settings_store import load as load_settings
+
+    def _run() -> dict:
+        with session_scope() as db:
+            s = load_settings(db)
+        return load_release(payload.get("release"), int(payload.get("top_n") or s.data.authority_top_n),
+                            s.data.authority_log_reference,
+                            progress=lambda n: log.info("Authority table: %s rows loaded", n))
+    log.info("Authority table refresh finished: %s", await asyncio.to_thread(_run))
+
+
+HANDLERS: dict[str, Handler] = {"audit": _audit_handler, "cc_ranks": _cc_ranks_handler}
+
+
+def enqueue_cc_ranks(force: bool = False) -> int | None:
+    """Queue an authority-table refresh unless one is already queued/running (or a table exists and not force)."""
+    from sqlalchemy import select as _select
+    from app.db.models import Job
+    from app.datalayer.authority import current_release
+    if not force and current_release():
+        return None
+    with session_scope() as db:
+        busy = db.execute(_select(Job.id).where(Job.type == "cc_ranks", Job.status.in_(["queued", "running"]))).first()
+        if busy:
+            return None
+        return jobs.enqueue(db, "cc_ranks", {}, priority=-1, max_attempts=2).id
 
 
 def _cleanup_cache() -> None:
@@ -116,7 +143,11 @@ class Worker:
             except NotImplementedError:
                 pass
         await asyncio.to_thread(_recover)
+        await asyncio.to_thread(enqueue_cc_ranks)  # first deploy: build the authority table once
         scheduler = AsyncIOScheduler(timezone="UTC")
+        # quarterly Common Crawl refresh (new graph releases appear roughly monthly)
+        scheduler.add_job(lambda: enqueue_cc_ranks(force=True), "cron", month="1,4,7,10", day=3, hour=2,
+                          id="cc_ranks_quarterly")
         # sync callables run in APScheduler's thread pool, off the event loop
         scheduler.add_job(_recover, "interval", minutes=1, id="recover_stale")
         scheduler.add_job(_cleanup_cache, "interval", hours=24, id="cache_cleanup",

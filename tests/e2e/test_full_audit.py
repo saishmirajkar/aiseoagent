@@ -29,7 +29,8 @@ def audit_result(database_url):
             site = Site(domain=f"127.0.0.1-{site_port}")
             db.add(site)
             db.flush()
-            a = Audit(site_id=site.id, input={"url": base + "/"}, settings_snapshot=RuntimeSettings().model_dump())
+            from tests.unit.helpers import offline_settings
+            a = Audit(site_id=site.id, input={"url": base + "/"}, settings_snapshot=offline_settings().model_dump())
             db.add(a)
             db.flush()
             audit_id = a.id

@@ -194,7 +194,8 @@ def test_keywords_module():
     assert r["kw.owner_keywords"].status == Status.WARNING
     assert [i.evidence["keyword"] for i in r["kw.owner_keywords"].items] == ["electric kart"]
     assert r["kw.competitor_gaps"].status == Status.NOT_APPLICABLE
-    assert r["kw.search_volume"].status == Status.NOT_CHECKED and "Phase 4" in r["kw.search_volume"].reason
+    assert r["kw.search_volume"].status == Status.NOT_CHECKED and "not configured" in r["kw.search_volume"].reason
+    assert r["kw.difficulty"].status == Status.NOT_CHECKED and "BRAVE_API_KEY" in r["kw.difficulty"].reason
     assert c.shared["keyword_map"][BASE + "/karts"]["primary_keyword"] == "go karts for sale"
     assert all(call["role"] == "reasoning" for call in llm.calls)
 

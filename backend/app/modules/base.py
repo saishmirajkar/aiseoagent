@@ -137,6 +137,7 @@ class AuditContext:
     results: dict[str, list[CheckResult]] = field(default_factory=dict)
     shared: dict[str, Any] = field(default_factory=dict)  # module outputs for dependents
     llm: Any = None  # app.llm.client.LLMClient, or None when no API key is configured
+    search: Any = None  # app.providers.search.SearchProvider, or None when not configured
 
 
 class CheckModule:

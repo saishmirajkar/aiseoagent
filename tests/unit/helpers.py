@@ -50,8 +50,16 @@ def site(pages: list[PageData], *, url_status: dict[str, UrlStatus] | None = Non
     return build_model(m)
 
 
+def offline_settings() -> RuntimeSettings:
+    """Defaults, minus sources that call live third-party endpoints (Trends, Autocomplete)."""
+    s = RuntimeSettings()
+    s.data.trends_enabled = False
+    s.data.autocomplete_seeds = 0
+    return s
+
+
 def ctx(s: SiteModel, settings: RuntimeSettings | None = None, integrations: dict | None = None) -> AuditContext:
-    return AuditContext(audit_id=None, site=s, settings=settings or RuntimeSettings(),
+    return AuditContext(audit_id=None, site=s, settings=settings or offline_settings(),
                         inputs=AuditInput(url=BASE + "/"), integrations=integrations or {})
 
 

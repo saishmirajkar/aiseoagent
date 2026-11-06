@@ -233,3 +233,78 @@ class Blob(Base):
     content_type: Mapped[str] = mapped_column(String(128), nullable=False)
     data: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     created_at: Mapped[datetime] = _now()
+
+
+# ----------------------------------------------------------------------------- Phase 4: own data layer
+
+
+class CCRelease(Base):
+    """A Common Crawl web-graph release loaded into the authority table."""
+    __tablename__ = "cc_releases"
+    release: Mapped[str] = mapped_column(String(64), primary_key=True)
+    status: Mapped[str] = mapped_column(String(16), nullable=False)  # loading | ready | failed
+    rows: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    top_n: Mapped[int] = mapped_column(Integer, nullable=False)
+    is_current: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    error: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime] = _now()
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DomainAuthority(Base):
+    __tablename__ = "domain_authority"
+    release: Mapped[str] = mapped_column(String(64), primary_key=True)
+    domain: Mapped[str] = mapped_column(String(255), primary_key=True)
+    harmonic_pos: Mapped[int] = mapped_column(Integer, nullable=False)
+    pagerank_pos: Mapped[int] = mapped_column(Integer, nullable=False)
+    score: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class WatchlistDomain(Base):
+    """Domains (clients, competitors) whose full inlink lists are imported from the Colab notebook."""
+    __tablename__ = "watchlist"
+    domain: Mapped[str] = mapped_column(String(255), primary_key=True)
+    kind: Mapped[str] = mapped_column(String(16), default="client", nullable=False)  # client | competitor
+    note: Mapped[str | None] = mapped_column(Text)
+    added_at: Mapped[datetime] = _now()
+
+
+class InlinkImport(Base):
+    __tablename__ = "inlink_imports"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    release: Mapped[str] = mapped_column(String(64), nullable=False)
+    target_domain: Mapped[str] = mapped_column(String(255), nullable=False)
+    source_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    imported_at: Mapped[datetime] = _now()
+
+    __table_args__ = (UniqueConstraint("release", "target_domain", name="uq_inlink_import"),)
+
+
+class Inlink(Base):
+    """Referring domain -> target domain for one Common Crawl release (imported lists only)."""
+    __tablename__ = "inlinks"
+    release: Mapped[str] = mapped_column(String(64), primary_key=True)
+    target_domain: Mapped[str] = mapped_column(String(255), primary_key=True)
+    source_domain: Mapped[str] = mapped_column(String(255), primary_key=True)
+
+
+class OutreachProspect(Base):
+    __tablename__ = "outreach_prospects"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_domain: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    prospect_domain: Mapped[str] = mapped_column(String(255), nullable=False)
+    url: Mapped[str] = mapped_column(Text, nullable=False)
+    title: Mapped[str | None] = mapped_column(Text)
+    kind: Mapped[str] = mapped_column(String(32), nullable=False)  # guest_post | resource | pr | link_gap | unlinked_mention
+    authority: Mapped[int | None] = mapped_column(Integer)
+    relevance: Mapped[float | None] = mapped_column(Float)
+    contact: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)  # publicly listed only
+    draft_email: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(16), default="new", nullable=False)  # new|contacted|replied|won|lost|skip
+    notes: Mapped[str | None] = mapped_column(Text)
+    audit_id: Mapped[int | None] = mapped_column(ForeignKey("audits.id", ondelete="SET NULL"))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
+                                                 onupdate=func.now(), nullable=False)
+
+    __table_args__ = (UniqueConstraint("site_domain", "url", name="uq_outreach_site_url"),)

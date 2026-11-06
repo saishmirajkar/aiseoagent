@@ -99,18 +99,22 @@ class KeywordResearch(CheckModule):
                   "Volume shows which keywords are worth prioritising.", "Prioritise by volume and intent."),
         CheckSpec("kw.difficulty", "Keyword difficulty", L, L,
                   "Difficulty shows how hard each keyword is to rank for.", "Target winnable keywords first."),
+        CheckSpec("kw.opportunities", "Keyword opportunities not covered by any page", M, M,
+                  "Real searches (Google Autocomplete, questions in search results) that no page targets yet.",
+                  "Add the most relevant ones to existing pages (sections/FAQs) or create new pages."),
     )
 
     async def run(self, ctx: AuditContext) -> list[CheckResult]:
+        llm_results, kmap = await self._llm_part(ctx)
+        return llm_results + await self._engine(ctx, kmap)
+
+    async def _llm_part(self, ctx: AuditContext) -> tuple[list[CheckResult], dict]:
         out: list[CheckResult] = []
-        engine = "Keyword engine (search volume and difficulty) is built in Phase 4"
         if ctx.llm is None:
-            out = [self.not_checked(c.id, NO_LLM) for c in self.checks[:4]]
-            out += [self.not_checked("kw.search_volume", engine), self.not_checked("kw.difficulty", engine)]
-            return out
+            return [self.not_checked(c.id, NO_LLM) for c in self.checks[:4]], {}
         pages = select_pages(ctx.site, ctx.settings.llm.max_pages)
         if not pages:
-            return [self.not_applicable(c.id, "No indexable pages") for c in self.checks]
+            return [self.not_applicable(c.id, "No indexable pages") for c in self.checks[:4]], {}
         bp = cached_analysis(ctx)
         system = SYSTEM + "\n\nSite context:\n" + site_context(ctx.site, ctx.inputs)
         kmap: dict[str, dict] = {}
@@ -142,9 +146,7 @@ class KeywordResearch(CheckModule):
         ctx.shared["keyword_map"] = kmap
         if not kmap:
             reason = f"LLM analysis failed: {errors[0]}" if errors else "LLM returned no keyword data"
-            out = [self.not_checked(c.id, reason) for c in self.checks[:4]]
-            out += [self.not_checked("kw.search_volume", engine), self.not_checked("kw.difficulty", engine)]
-            return out
+            return [self.not_checked(c.id, reason) for c in self.checks[:4]], {}
         src = [f"AI analysis ({ctx.settings.llm.reasoning_model})"]
         ctx.shared.setdefault("metrics", []).append(("keywords", "keyword_map", list(kmap.values()), src[0]))
         partial = f" ({len(kmap)} of {len(pages)} pages analysed; {errors[0]})" if errors else ""
@@ -207,7 +209,124 @@ class KeywordResearch(CheckModule):
                                    items=missing, affected=len(missing), total=len(ctx.inputs.keywords), sources=src))
 
         out.append(await self._competitor_gaps(ctx, kmap, src))
-        out += [self.not_checked("kw.search_volume", engine), self.not_checked("kw.difficulty", engine)]
+        return out, kmap
+
+    # ------------------------------------------------------------------ keyword engine (Phase 4)
+    def _seeds(self, ctx: AuditContext, kmap: dict) -> list[tuple[str, str | None]]:
+        """(keyword, intent) in priority order: owner keywords, then mapped primaries by page importance."""
+        seen, out = set(), []
+
+        def add(k: str | None, intent: str | None) -> None:
+            k = (k or "").strip().lower()
+            if k and k not in seen and len(k) <= 80:
+                seen.add(k)
+                out.append((k, intent))
+        for k in ctx.inputs.keywords:
+            add(k, None)
+        for p in select_pages(ctx.site, ctx.settings.llm.max_pages or 60):
+            row = kmap.get(p.url)
+            if row:
+                add(row.get("primary_keyword"), row.get("intent"))
+            elif not kmap:  # no LLM: fall back to short H1s
+                h1 = next((t for lvl, t in p.headings if lvl == 1), "")
+                if 1 <= len(h1.split()) <= 5:
+                    add(h1, None)
+        return out
+
+    async def _engine(self, ctx: AuditContext, kmap: dict) -> list[CheckResult]:
+        from app.datalayer import keywords as ke
+        seeds = self._seeds(ctx, kmap)
+        if not seeds:
+            return [self.not_applicable(c, "No keywords to analyse (no target keywords and no keyword map)")
+                    for c in ("kw.search_volume", "kw.difficulty", "kw.opportunities")]
+        home = ctx.site.homepage
+        lang = (ctx.inputs.language or (home.lang if home else None) or "en")[:2]
+        country = ctx.inputs.country
+        d = ctx.settings.data
+        out: list[CheckResult] = []
+
+        # search volume (first available source in the chain)
+        vol_kws = [k for k, _ in seeds[:25]]
+        vols, notes = await ke.volume_chain(vol_kws, country, lang,
+                                            [ke.GoogleAdsVolume(), ke.SearchConsoleVolume()]
+                                            + ([ke.TrendsRelative(d.keyword_cache_days)] if d.trends_enabled else []))
+        if vols:
+            src = next(iter(vols.values())).source
+            items = [FindingItem(None, {"keyword": k, **({"monthly_searches": v.value} if v.value is not None else {}),
+                                        **({"relative_interest_0_100": v.relative_index}
+                                           if v.relative_index is not None else {}),
+                                        "source": v.source}) for k, v in sorted(vols.items(), key=lambda kv: -(kv[1].relative_index or kv[1].value or 0))]
+            summary = (f"{len(vols)} keyword(s) measured with {src}"
+                       + ("; relative interest only — no keyword with known volume to anchor an estimate" if src.startswith("Google Trends") else ""))
+            out.append(CheckResult(spec=self.spec("kw.search_volume"), status=Status.PASS, summary=summary,
+                                   items=items, total=len(vols), sources=[src] + [f"Not available: {n}" for n in notes]))
+        else:
+            out.append(self.not_checked("kw.search_volume", "No volume source available: " + "; ".join(notes)))
+
+        # difficulty (needs the search provider)
+        diff_kws = seeds[:ctx.settings.budgets.keyword_difficulty_keywords]
+        diffs, d_err = [], None
+        if ctx.search is None:
+            d_err = "Search provider not configured (add the BRAVE_API_KEY secret)"
+        else:
+            from app.providers.search import SearchError
+            for k, intent in diff_kws:
+                try:
+                    diffs.append(await ke.difficulty(k, intent, ctx.search, ctx.settings, country=country, lang=lang))
+                except SearchError as e:
+                    d_err = str(e)
+                    break
+        ctx.shared["keyword_difficulty"] = {x.keyword: x for x in diffs}
+        if diffs:
+            items = [FindingItem(None, {"keyword": x.keyword, "difficulty_0_100": x.score, "components": x.components,
+                                        "top_domains": [t["domain"] for t in x.top_domains[:5]]})
+                     for x in sorted(diffs, key=lambda x: (x.score is None, x.score or 0))]
+            note = f" (stopped early: {d_err})" if d_err else ""
+            out.append(CheckResult(spec=self.spec("kw.difficulty"), status=Status.PASS,
+                                   summary=f"Difficulty estimated for {len(diffs)} keyword(s){note}", items=items,
+                                   total=len(diffs), sources=[diffs[0].source]))
+        else:
+            out.append(self.not_checked("kw.difficulty", d_err or "No keywords measured"))
+
+        # opportunities: autocomplete + SERP questions not covered by any mapped keyword
+        covered = [k for k, _ in seeds] + [x for r in kmap.values()
+                                            for x in r.get("secondary_keywords", []) + r.get("long_tail", [])]
+        ideas: dict[str, str] = {}
+        ac_err = None
+        if d.autocomplete_seeds:
+            ac = ke.Autocomplete(hl=lang, gl=country, cache_days=d.keyword_cache_days)
+            for i, (k, _) in enumerate(seeds[:d.autocomplete_seeds]):
+                try:
+                    for s in await ac.expand(k, alphabet=d.autocomplete_alphabet and i < 3):
+                        ideas.setdefault(s, "Google Autocomplete")
+                except ke.SourceUnavailable as e:
+                    ac_err = str(e)
+                    break
+        for x in diffs:
+            for q in x.questions:
+                ideas.setdefault(q.lower(), "Brave Search (questions)")
+        brand = {w for w in kw_tokens(ctx.inputs.brand or "")}
+        new = [(i, src) for i, src in ideas.items()
+               if not any(similar(i, c) or kw_tokens(i) <= kw_tokens(c) for c in covered)
+               and not (brand and kw_tokens(i) <= brand)]
+        if not ideas:
+            out.append(self.not_checked("kw.opportunities", ac_err or "No keyword ideas returned"))
+        else:
+            pages = select_pages(ctx.site, 60)
+            items = []
+            for idea, src in new[:40]:
+                best = max(pages, key=lambda p: len(kw_tokens(idea) & kw_tokens(f"{p.title} {p.url}")), default=None)
+                overlap = len(kw_tokens(idea) & kw_tokens(f"{best.title} {best.url}")) if best else 0
+                items.append(FindingItem(best.url if best and overlap >= 2 else None,
+                                         {"keyword_idea": idea, "source": src,
+                                          "suggestion": "add a section/FAQ to this page" if best and overlap >= 2
+                                          else "consider a new page"}))
+            status = Status.WARNING if items else Status.PASS
+            out.append(CheckResult(spec=self.spec("kw.opportunities"), status=status,
+                                   summary=f"{len(new)} of {len(ideas)} real search ideas are not targeted by any page"
+                                           + (f" (Autocomplete stopped: {ac_err})" if ac_err else ""),
+                                   items=items, affected=len(new), total=len(ideas),
+                                   sources=sorted(set(ideas.values()))))
         return out
 
     # ------------------------------------------------------------------ competitors

@@ -175,6 +175,20 @@ class LLMSettings(BaseModel):
     refusal_fallbacks: bool = Field(True, description="Server-side fallback when the reasoning model declines")
 
 
+class DataLayerSettings(BaseModel):
+    authority_top_n: int = Field(1_000_000, ge=10_000, le=5_000_000, description="Common Crawl domains loaded")
+    authority_log_reference: int = Field(100_000_000, ge=1_000_000, description="Rank mapped to score 0 (log scale)")
+    keyword_cache_days: int = Field(30, ge=1, le=365)
+    search_cache_days: int = Field(7, ge=1, le=90)
+    autocomplete_seeds: int = Field(8, ge=0, le=50, description="Keywords expanded with Google Autocomplete")
+    autocomplete_alphabet: bool = Field(True, description="Also expand seeds with a-z and question words")
+    trends_enabled: bool = Field(True, description="Use Google Trends (best-effort; often rate-limited on servers)")
+    difficulty_weights: dict[str, float] = Field(default_factory=lambda: {
+        "authority": 0.55, "content_depth": 0.15, "exact_match_titles": 0.15, "intent_match": 0.15})
+    backlink_pages_checked: int = Field(25, ge=0, le=200, description="Search results fetched to verify links")
+    outreach_prospects: int = Field(20, ge=0, le=100)
+
+
 class RetentionSettings(BaseModel):
     page_text_audits_per_site: int = Field(3, ge=1, le=50)
     cache_cleanup_days: int = Field(1, ge=1)
@@ -187,3 +201,4 @@ class RuntimeSettings(BaseModel):
     scoring: ScoringSettings = Field(default_factory=ScoringSettings)
     retention: RetentionSettings = Field(default_factory=RetentionSettings)
     llm: LLMSettings = Field(default_factory=LLMSettings)
+    data: DataLayerSettings = Field(default_factory=DataLayerSettings)
