@@ -146,16 +146,23 @@ def test_keyword_engine_in_module(monkeypatch):
     async def no_fetch(urls, timeout=15.0):
         return []
     monkeypatch.setattr(ke, "fetch_word_counts", no_fetch)
-    s = site([page("/", headings=[(1, "Racing Karts")])])
+    s = site([page("/", headings=[(1, "Racing Karts")], text="We build electric go karts. How much does it cost? "
+                                                         "Prices and delivery for every kart.")])
     c = ctx(s)
     c.search = FakeSearch()
     c.inputs.keywords = ["electric go kart"]
     r = run(KeywordResearch(), c)
     assert r["kw.mapping"].status == Status.NOT_CHECKED  # no LLM
     diff = r["kw.difficulty"]
-    assert diff.status == Status.PASS and diff.total == 2  # owner keyword + H1 fallback seed
-    assert {i.evidence["keyword"] for i in diff.items} == {"electric go kart", "racing karts"}
+    assert diff.status == Status.PASS and diff.total == 1  # owner keyword only (no H1 fallback)
+    assert {i.evidence["keyword"] for i in diff.items} == {"electric go kart"}
     assert "Common Crawl r" in diff.sources[0]
     opp = r["kw.opportunities"]
     assert opp.status == Status.WARNING and any("cost" in i.evidence["keyword_idea"] for i in opp.items)
     assert r["kw.search_volume"].status == Status.NOT_CHECKED  # Trends disabled in offline tests
+
+
+
+def test_engine_needs_keywords_without_llm():
+    r = run(KeywordResearch(), ctx(site([page("/", headings=[(1, "About")])])))
+    assert r["kw.search_volume"].status == Status.NOT_CHECKED and "target keywords" in r["kw.search_volume"].reason

@@ -53,6 +53,11 @@ topic, 2-4 example keywords, which competitor URL covers it, and a suggested pag
 PAGE_SCHEMA = obj({"pages": arr(obj({
     "url": STR, "primary_keyword": STR, "secondary_keywords": arr(STR), "long_tail": arr(STR),
     "intent": enum(*INTENTS), "cluster": STR, "confidence": enum("high", "medium", "low")}))})
+SCREEN_SYSTEM = """You screen keyword ideas for a business's SEO. Keep only ideas a potential customer of THIS
+business (its products/services, country and audience) might search; drop other countries/cities it does not
+serve, unrelated meanings, job/DIY/hobby queries it cannot serve, and navigational queries for other brands.
+Return the ids of the ideas to keep."""
+SCREEN_SCHEMA = obj({"relevant_ids": {"type": "array", "items": {"type": "integer"}}})
 GAP_SCHEMA = obj({"gaps": arr(obj({"topic": STR, "keywords": arr(STR), "competitor_url": STR,
                                    "suggestion": STR}))})
 
@@ -223,22 +228,21 @@ class KeywordResearch(CheckModule):
                 out.append((k, intent))
         for k in ctx.inputs.keywords:
             add(k, None)
+        # Only the AI keyword map supplies page keywords. H1s were tried as a fallback and proved
+        # unreliable (navigation labels and product names such as "about" or "cub").
         for p in select_pages(ctx.site, ctx.settings.llm.max_pages or 60):
             row = kmap.get(p.url)
             if row:
                 add(row.get("primary_keyword"), row.get("intent"))
-            elif not kmap:  # no LLM: fall back to short H1s
-                h1 = next((t for lvl, t in p.headings if lvl == 1), "")
-                if 1 <= len(h1.split()) <= 5:
-                    add(h1, None)
         return out
 
     async def _engine(self, ctx: AuditContext, kmap: dict) -> list[CheckResult]:
         from app.datalayer import keywords as ke
         seeds = self._seeds(ctx, kmap)
         if not seeds:
-            return [self.not_applicable(c, "No keywords to analyse (no target keywords and no keyword map)")
-                    for c in ("kw.search_volume", "kw.difficulty", "kw.opportunities")]
+            reason = ("Needs keywords: provide target keywords with the audit, or configure ANTHROPIC_API_KEY "
+                      "so the keyword map can be built")
+            return [self.not_checked(c, reason) for c in ("kw.search_volume", "kw.difficulty", "kw.opportunities")]
         home = ctx.site.homepage
         lang = (ctx.inputs.language or (home.lang if home else None) or "en")[:2]
         country = ctx.inputs.country
@@ -306,28 +310,64 @@ class KeywordResearch(CheckModule):
             for q in x.questions:
                 ideas.setdefault(q.lower(), "Brave Search (questions)")
         brand = {w for w in kw_tokens(ctx.inputs.brand or "")}
+        vocab = set()
+        for p in ctx.site.html_pages():
+            vocab |= kw_tokens(f"{p.title or ''} {' '.join(t for _, t in p.headings)} {p.text[:20000]}")
+        seed_words = set().union(*(kw_tokens(k) for k, _ in seeds)) if seeds else set()
+
+        def fits_site(idea: str) -> bool:
+            extra = kw_tokens(idea) - seed_words
+            return not extra or len(extra & vocab) / len(extra) >= 0.5  # e.g. drops "...south africa", "...tokyo"
         new = [(i, src) for i, src in ideas.items()
                if not any(similar(i, c) or kw_tokens(i) <= kw_tokens(c) for c in covered)
-               and not (brand and kw_tokens(i) <= brand)]
+               and not (brand and kw_tokens(i) <= brand) and fits_site(i)]
+        screened = None
+        if new and ctx.llm is not None:
+            new, screened = await self._screen(ctx, new)
         if not ideas:
             out.append(self.not_checked("kw.opportunities", ac_err or "No keyword ideas returned"))
         else:
             pages = select_pages(ctx.site, 60)
+            targets = {p.url: kw_tokens(" ".join([p.title or ""] + [t for lvl, t in p.headings if lvl <= 2])
+                                        + " " + " ".join([kmap.get(p.url, {}).get("primary_keyword", "")]
+                                                         + kmap.get(p.url, {}).get("secondary_keywords", [])))
+                       for p in pages}
             items = []
             for idea, src in new[:40]:
-                best = max(pages, key=lambda p: len(kw_tokens(idea) & kw_tokens(f"{p.title} {p.url}")), default=None)
-                overlap = len(kw_tokens(idea) & kw_tokens(f"{best.title} {best.url}")) if best else 0
-                items.append(FindingItem(best.url if best and overlap >= 2 else None,
+                specific = kw_tokens(idea) - seed_words  # what makes the idea different from the seed keyword
+                best, score = None, 0
+                for url, toks in targets.items():
+                    sc = len(specific & toks)
+                    if sc > score:
+                        best, score = url, sc
+                matched = best is not None and score >= (1 if kmap else 2)  # page keywords are precise; titles are not
+                items.append(FindingItem(best if matched else None,
                                          {"keyword_idea": idea, "source": src,
-                                          "suggestion": "add a section/FAQ to this page" if best and overlap >= 2
-                                          else "consider a new page"}))
+                                          "suggestion": "add a section/FAQ to this page" if matched
+                                          else "new page, or add to the closest existing page"}))
             status = Status.WARNING if items else Status.PASS
             out.append(CheckResult(spec=self.spec("kw.opportunities"), status=status,
-                                   summary=f"{len(new)} of {len(ideas)} real search ideas are not targeted by any page"
-                                           + (f" (Autocomplete stopped: {ac_err})" if ac_err else ""),
+                                   summary=f"{len(new)} relevant search idea(s) not targeted by any page "
+                                           f"(from {len(ideas)} collected; filtered to the site's own vocabulary"
+                                           + (", screened by AI" if screened else
+                                              "; not screened by AI, so it may include other markets") + ")"
+                                           + (f"; Autocomplete stopped: {ac_err}" if ac_err else ""),
                                    items=items, affected=len(new), total=len(ideas),
-                                   sources=sorted(set(ideas.values()))))
+                                   sources=sorted(set(ideas.values())) + ([screened] if screened else [])))
         return out
+
+    async def _screen(self, ctx: AuditContext, ideas: list[tuple[str, str]]) -> tuple[list[tuple[str, str]], str | None]:
+        """Cheap bulk-model pass: keep only ideas relevant to this business and market."""
+        batch = ideas[:150]
+        listing = "\n".join(f"{n}. {i}" for n, (i, _) in enumerate(batch))
+        try:
+            data = await ctx.llm.json(task="keywords.screen_ideas", role="bulk", system=SCREEN_SYSTEM
+                                      + "\n\nSite context:\n" + site_context(ctx.site, ctx.inputs),
+                                      user=f"<data>\n{listing}\n</data>", schema=SCREEN_SCHEMA, max_tokens=2000)
+        except LLMError:
+            return ideas, None
+        keep = {k for k in data.get("relevant_ids", []) if isinstance(k, int)}
+        return [x for n, x in enumerate(batch) if n in keep] + ideas[150:], f"AI relevance screen ({ctx.settings.llm.bulk_model})"
 
     # ------------------------------------------------------------------ competitors
     async def _competitor_gaps(self, ctx: AuditContext, kmap: dict, src: list[str]) -> CheckResult:
