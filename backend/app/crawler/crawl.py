@@ -74,6 +74,8 @@ class Crawler:
         self.fetched = 0
         self.rendered_pages = 0
         self.js_site = False
+        self.link_crawl_complete = False  # every page reachable by links was fetched
+        self.dropped_for_limit = 0
         self._seq = itertools.count()
         self._last_progress = 0.0
         self.robots: RobotsInfo | None = None
@@ -206,6 +208,7 @@ class Crawler:
         facts.crawl = {
             "pages_fetched": self.fetched, "limit": self.cfg.max_pages,
             "limit_reached": self.fetched >= self.cfg.max_pages,
+            "link_crawl_complete": self.link_crawl_complete,
             "rendered_pages": self.rendered_pages, "requests": f.request_count,
             "duration_s": round(time.monotonic() - t0, 1),
             "renderer_error": self.renderer.unavailable if self.renderer else None,
@@ -233,6 +236,7 @@ class Crawler:
                     continue
                 async with lock:
                     if self.fetched >= self.cfg.max_pages:
+                        self.dropped_for_limit += 1
                         queue.task_done()
                         continue
                     self.fetched += 1
@@ -254,6 +258,8 @@ class Crawler:
                 for w in workers:
                     w.cancel()
                 raise
+            if not sitemap_seeded:
+                self.link_crawl_complete = self.dropped_for_limit == 0
             if sitemap_seeded or self.fetched >= self.cfg.max_pages:
                 break
             sitemap_seeded = True

@@ -96,6 +96,8 @@ class PageData:
     dates: dict[str, str] = field(default_factory=dict)
     mixed_content: list[str] = field(default_factory=list)
     resources: list[str] = field(default_factory=list)  # same-site CSS/JS (robots checks)
+    embeds: list[str] = field(default_factory=list)  # video iframes (YouTube, Vimeo, ...)
+    has_article_tag: bool = False
     # computed by the builder
     in_sitemap: bool = False
     inlinks: int = 0

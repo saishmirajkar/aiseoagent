@@ -154,3 +154,15 @@ def test_persisted_site_model(audit_result, db):
     assert db.execute(select(Link).where(Link.audit_id == aid)).first() is not None
     assert db.execute(select(Image).where(Image.audit_id == aid)).first() is not None
     assert db.execute(select(PageText).join(Page, Page.id == PageText.page_id).where(Page.audit_id == aid)).first()
+
+
+def test_phase2_modules(audit_result):
+    d, b = audit_result["data"], audit_result["base"]
+    orph = _f(d, "links.orphans")
+    assert orph["status"] == "FAIL" and f"{b}/orphan" in _urls(orph)  # link crawl was complete
+    assert _f(d, "links.generic_anchors")["affected"] >= 1  # "Read more" on the blog post
+    missing = {(i["url"], i["evidence"]["missing_type"]) for i in _f(d, "schema.missing_types")["items"]}
+    assert (f"{b}/", "Organization") in missing and (f"{b}/", "WebSite") in missing
+    assert all(i["generated_fix"]["validated"] for i in _f(d, "schema.missing_types")["items"])
+    perf = _f(d, "perf.lcp")
+    assert perf["status"] == "NOT_CHECKED" and "PAGESPEED_API_KEY" in perf["reason"]

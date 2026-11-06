@@ -29,7 +29,15 @@ _Not built yet; planned for build phase 3. Reported as NOT_CHECKED._
 
 ## 4. Internal Linking (On-page)
 
-_Not built yet; planned for build phase 2. Reported as NOT_CHECKED._
+| Check ID | Check | Impact | Effort | Fix |
+|---|---|---|---|---|
+| `links.orphans` | Orphan pages (in sitemap, no internal links) | Med | Low | Link to each orphan from relevant pages (see the link suggestions), or remove it from the sitemap if it should not exist. |
+| `links.few_inlinks` | Pages with fewer than 3 internal links pointing to them | Med | Low | Add contextual links from related pages and hub/category pages. |
+| `links.deep_pages` | Pages more than 3 clicks from the homepage | Med | Med | Link to them from the homepage, navigation, or hub pages so they are within 3 clicks. |
+| `links.generic_anchors` | Generic anchor text ("click here", "read more") | Low | Low | Use descriptive anchors that name the target topic. |
+| `links.empty_anchors` | Links with no anchor text | Low | Low | Add visible text or an aria-label describing the target. |
+| `links.nofollow_internal` | Internal links marked nofollow | Low | Low | Remove rel="nofollow" from internal links (use noindex on the target if needed). |
+| `links.suggestions` | Internal link opportunities | Med | Low | Add the suggested links (source page → anchor → target page). |
 
 ## 5. Image SEO (On-page)
 
@@ -94,11 +102,24 @@ _Not built yet; planned for build phase 2. Reported as NOT_CHECKED._
 
 ## 8. Website Performance (Performance)
 
-_Not built yet; planned for build phase 2. Reported as NOT_CHECKED._
+| Check ID | Check | Impact | Effort | Fix |
+|---|---|---|---|---|
+| `perf.lcp` | Largest Contentful Paint (LCP ≤ 2.5 s) | High | Med | Optimise the LCP element: compress/resize the hero image, preload it, cut render-blocking CSS/JS and reduce server response time. |
+| `perf.inp` | Interaction to Next Paint (INP ≤ 200 ms) | High | Med | Break up long JavaScript tasks, defer third-party scripts, and reduce main-thread work. |
+| `perf.cls` | Cumulative Layout Shift (CLS ≤ 0.1) | High | Low | Set width/height on images and embeds, reserve space for ads/banners, avoid inserting content above existing content. |
+| `perf.tbt` | Total Blocking Time (lab proxy for INP, ≤ 200 ms) | Med | Med | Reduce and split JavaScript; defer non-critical scripts. |
+| `perf.score` | Lighthouse performance score (≥ 90) | Med | Med | Work through the opportunities listed in the performance findings. |
+| `perf.opportunities` | Top performance opportunities | Med | Med | Apply the listed fixes, starting with the largest savings. |
 
 ## 9. Schema Markup (Schema)
 
-_Not built yet; planned for build phase 2. Reported as NOT_CHECKED._
+| Check ID | Check | Impact | Effort | Fix |
+|---|---|---|---|---|
+| `schema.syntax` | Structured data syntax and vocabulary errors | High | Low | Fix the JSON syntax, use "@context": "https://schema.org" and give every item an @type. |
+| `schema.required` | Missing required schema properties | Med | Low | Add the listed required properties (see Google's structured data docs for each type). |
+| `schema.recommended` | Missing recommended schema properties | Low | Low | Add the listed recommended properties where the information exists on the page. |
+| `schema.conflicts` | Duplicate or conflicting schema | Med | Low | Keep one item per entity and make names/URLs consistent across the site. |
+| `schema.missing_types` | Schema missing for the page type | Med | Low | Add the generated JSON-LD to the page (fill any fields listed under needs_input). |
 
 ## 10. Backlink Analysis (Off-page)
 

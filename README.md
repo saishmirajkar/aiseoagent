@@ -11,7 +11,7 @@ sends or changes anything on the audited site or anywhere else.
 | Phase | Scope | Status |
 |---|---|---|
 | 1 | Crawler + Site Model, Technical Audit (6), Crawling & Indexing (7, crawl-based), Meta Tags (3), Image SEO (5, deterministic), Postgres job queue, reports, dashboard | **Built** |
-| 2 | Performance (PageSpeed), Schema detection/validation/generation, Internal Linking | Planned |
+| 2 | Performance (PageSpeed), Schema detection/validation/generation, Internal Linking | **Built** |
 | 3 | LLM layer: keywords, intent, content gaps, rewrites, alt text, GEO content | Planned |
 | 4 | Own data layer (keyword engine, Common Crawl authority, backlink discovery, Colab import), modules 10, 11, 12, 16 | Planned |
 | 5 | Local SEO (13–15), dashboard polish, PDF export, audit comparison, deployment hardening | Planned |
@@ -83,6 +83,28 @@ Implemented in `backend/app/scoring/scorer.py`.
   more affected URLs. "Top 10 fixes" are the first ten FAIL/WARNING checks in this order.
 
 Keyword difficulty is documented here when it is built (Phase 4).
+
+## Data sources in Phase 2
+
+* **Performance (module 8).** PageSpeed Insights API v5, mobile and desktop, for the homepage plus
+  the most-linked page of each of the largest page templates (default 5). For each Core Web Vital
+  the report uses, in order: URL-level CrUX field data (real Chrome users, p75), origin-level CrUX
+  field data, then Lighthouse lab data. Every value is labelled with its source. INP exists only in
+  field data; without it, INP is NOT_CHECKED and lab Total Blocking Time is shown as a proxy.
+  Thresholds: LCP ≤ 2.5 s, INP ≤ 200 ms, CLS ≤ 0.1 (good); > 4 s / 500 ms / 0.25 is poor (FAIL).
+  Results are cached for 24 h. The key is sent in the `X-Goog-Api-Key` header, never in the URL.
+* **Schema (module 9).** Existing JSON-LD, Microdata and RDFa are validated against the
+  required/recommended properties in `backend/app/modules/schema_rules.py` (based on Google's
+  structured-data docs). Expected types per page come from deterministic signals (homepage, product
+  and article URLs, og:type, dates, prices, video embeds, nested paths for breadcrumbs). Generated
+  JSON-LD is validated in code; anything the page does not state (a price, an upload date) is listed
+  under `needs_input`, never invented. Social profiles are only added to `sameAs` when they are
+  linked site-wide or match the brand; others are listed for confirmation.
+* **Internal linking (module 4).** Orphans are sitemap URLs that no crawled page links to. If the
+  crawl reached its page limit before following every link, orphans are a WARNING with a caveat
+  instead of a FAIL. Link suggestions use TF-IDF similarity over page text (terms that appear on
+  most pages, such as navigation and footer text, are ignored), require at least two shared topic
+  terms, skip near-duplicate pages, and add pillar ↔ cluster links within URL sections.
 
 ## Local development
 

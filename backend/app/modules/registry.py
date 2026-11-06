@@ -14,9 +14,12 @@ from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, Level, Status,
 )
 from app.modules.m03_meta_tags import MetaTags
+from app.modules.m04_internal_links import InternalLinking
 from app.modules.m05_images import ImageSEO
 from app.modules.m06_technical import TechnicalAudit
 from app.modules.m07_indexing import CrawlingIndexing
+from app.modules.m08_performance import Performance
+from app.modules.m09_schema import SchemaMarkup
 
 log = logging.getLogger(__name__)
 MODULE_TIMEOUT_S = 900
@@ -39,12 +42,12 @@ def all_modules() -> list[CheckModule]:
         PlannedModule("keywords", 1, "Keyword Research & Mapping", Category.ONPAGE, 3),
         PlannedModule("content", 2, "Content Optimization", Category.ONPAGE, 3),
         MetaTags(),
-        PlannedModule("internal_links", 4, "Internal Linking", Category.ONPAGE, 2),
+        InternalLinking(),
         ImageSEO(),
         TechnicalAudit(),
         CrawlingIndexing(),
-        PlannedModule("performance", 8, "Website Performance", Category.PERFORMANCE, 2),
-        PlannedModule("schema", 9, "Schema Markup", Category.SCHEMA, 2),
+        Performance(),
+        SchemaMarkup(),
         PlannedModule("backlinks", 10, "Backlink Analysis", Category.OFFPAGE, 4),
         PlannedModule("outreach", 11, "Link Building & Outreach", Category.OFFPAGE, 4),
         PlannedModule("brand_mentions", 12, "Brand Mentions & Reputation", Category.OFFPAGE, 4),

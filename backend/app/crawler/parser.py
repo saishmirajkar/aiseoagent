@@ -18,6 +18,8 @@ STRIP_FOR_TEXT = ["script", "style", "noscript", "template", "svg", "iframe", "o
 MOUNT_IDS = ("root", "app", "__next", "__nuxt", "___gatsby", "svelte", "main-app")
 _WS = re.compile(r"\s+")
 _PHONE = re.compile(r"(?<![\w/])(\+?\(?\d[\d\s().\-]{7,18}\d)(?![\w/])")
+_VIDEO_HOST = re.compile(r"//(www\.)?(youtube\.com|youtube-nocookie\.com|youtu\.be|player\.vimeo\.com|"
+                         r"vimeo\.com|fast\.wistia\.net|www\.loom\.com)/", re.I)
 _HREFLANG = re.compile(r"^(x-default|[a-z]{2,3}(-[a-z]{4})?(-([a-z]{2}|\d{3}))?)$", re.I)
 
 
@@ -280,6 +282,12 @@ def parse_page(page: PageData, html: str, scope: SiteScope) -> ShellSignals:
                     page.mixed_content.append(r)
                 if scope.is_internal(r):
                     page.resources.append(r)
+    page.embeds = []
+    for n in tree.css("iframe"):
+        u = normalize_url(_attr(n, "src") or _attr(n, "data-src") or "", base)
+        if u and _VIDEO_HOST.search(u) and u not in page.embeds:
+            page.embeds.append(u)
+    page.has_article_tag = tree.css_first("article") is not None
     page.mixed_content = sorted(set(page.mixed_content))[:100]
     page.resources = sorted(set(page.resources))[:100]
 

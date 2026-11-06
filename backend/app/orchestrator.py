@@ -88,6 +88,16 @@ def _finding_rows(audit_id: int, module: CheckModule, results: list[CheckResult]
     return rows
 
 
+def _cost_summary(audit_id: int) -> dict:
+    """Per-audit API usage from the ledger (cached results cost nothing and are not counted)."""
+    from app.usage import audit_cost
+    by = audit_cost(audit_id)
+    return {"llm_usd": round(sum(v["usd"] for k, v in by.items() if k in ("anthropic", "vertex_gemini")), 4),
+            "search_queries": int(by.get("brave", {}).get("calls", 0)),
+            "pagespeed_calls": int(by.get("pagespeed", {}).get("calls", 0)),
+            "total_usd": round(sum(v["usd"] for v in by.values()), 4), "by_provider": by}
+
+
 def _load(audit_id: int) -> tuple[Audit, RuntimeSettings | None]:
     with session_scope() as db:
         a = db.get(Audit, audit_id)
@@ -192,8 +202,7 @@ async def run_audit(audit_id: int, *, verify_tls: bool = True) -> str:
             db.execute(update(Audit).where(Audit.id == audit_id).values(
                 scores={"overall": card.overall, "categories": card.categories, "modules": card.modules},
                 coverage=card.coverage, summary=summary,
-                cost={"llm_usd": 0.0, "search_queries": 0, "pagespeed_calls": 0,
-                      "note": "No paid API calls are made in this build phase"}))
+                cost=_cost_summary(audit_id)))
     await asyncio.to_thread(_finish)
 
     await progress.stage("report", "Rendering reports")

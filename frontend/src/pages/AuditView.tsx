@@ -145,7 +145,10 @@ function Overview({ a, onShowFindings }: { a: any; onShowFindings: () => void })
         </ol>
       ) : <p className="muted">No issues found.</p>}
       <button className="link" onClick={onShowFindings}>See all findings →</button>
-      <p className="muted small">Estimated API cost for this audit: ${a.cost?.llm_usd ?? 0} LLM · {a.cost?.search_queries ?? 0} search queries.</p>
+      <p className="muted small">
+        API usage for this audit: ${a.cost?.total_usd ?? 0} total · ${a.cost?.llm_usd ?? 0} LLM · {a.cost?.search_queries ?? 0} search
+        queries · {a.cost?.pagespeed_calls ?? 0} PageSpeed calls (free; cached results not counted).
+      </p>
     </>
   );
 }
