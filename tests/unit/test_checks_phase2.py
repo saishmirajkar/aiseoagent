@@ -314,3 +314,12 @@ def test_tfidf_boilerplate_removed():
     words = ["apple", "banana", "cherry", "damson", "elder", "fig", "grape", "hazel"]
     t = TfIdf({w: f"menu footer subscribe {w}" for w in words})
     assert "menu" not in t.vec["apple"] and "apple" in t.vec["apple"]
+
+
+def test_tfidf_section_boilerplate_removed():
+    words = ["apple", "banana", "cherry", "damson", "elder", "fig", "grape", "hazel"]
+    docs = {f"blog-{w}": f"placeholder landscape sunrise {w}" for w in words}
+    docs.update({f"shop-{w}": f"price cart {w}fruit" for w in words[:2]})
+    groups = {k: k.split("-")[0] for k in docs}
+    t = TfIdf(docs, groups=groups, boilerplate_df=0.9)
+    assert "landscape" not in t.vec["blog-apple"] and "apple" in t.vec["blog-apple"]

@@ -167,7 +167,7 @@ class InternalLinking(CheckModule):
         if len(sources) < 3:
             return self.not_applicable("links.suggestions", "Too few pages to suggest internal links")
         tfidf = TfIdf({p.url: f"{p.title or ''} {' '.join(t for _, t in p.headings)} {p.text[:20000]}"
-                       for p in sources})
+                       for p in sources}, groups={p.url: p.template_key or "" for p in sources})
         links_from: dict[str, set[str]] = {p.url: {l.target for l in p.links if l.internal} for p in sources}
         targets = [p for p in indexable if p.url in orphan_urls or p.inlinks < th.important_page_min_inlinks
                    or (p.depth or 0) > 3]

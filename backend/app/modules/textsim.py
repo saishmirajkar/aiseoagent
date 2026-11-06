@@ -21,9 +21,26 @@ def terms(text: str) -> list[str]:
 
 
 class TfIdf:
-    def __init__(self, docs: dict[str, str], max_terms: int = 300, boilerplate_df: float = 0.5):
+    def __init__(self, docs: dict[str, str], max_terms: int = 300, boilerplate_df: float = 0.5,
+                 groups: dict[str, str] | None = None, group_df: float = 0.6):
+        """``groups`` maps doc -> section (e.g. /blog/*); terms on most docs of a section are that
+        section's boilerplate (sidebars, repeated template text) and are dropped for its docs."""
         self.tf: dict[str, Counter] = {k: Counter(terms(v)) for k, v in docs.items()}
         n = max(1, len(self.tf))
+        if groups:
+            members: dict[str, list[str]] = {}
+            for k in self.tf:
+                members.setdefault(groups.get(k, ""), []).append(k)
+            for keys in members.values():
+                if len(keys) < 6:
+                    continue
+                gdf: Counter = Counter()
+                for k in keys:
+                    gdf.update(self.tf[k].keys())
+                local = {t for t, d in gdf.items() if d / len(keys) > group_df}
+                for k in keys:
+                    for t in local & self.tf[k].keys():
+                        del self.tf[k][t]
         df: Counter = Counter()
         for c in self.tf.values():
             df.update(c.keys())
