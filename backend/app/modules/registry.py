@@ -22,6 +22,10 @@ from app.modules.m06_technical import TechnicalAudit
 from app.modules.m07_indexing import CrawlingIndexing
 from app.modules.m08_performance import Performance
 from app.modules.m09_schema import SchemaMarkup
+from app.modules.m10_backlinks import BacklinkAnalysis
+from app.modules.m11_outreach import LinkBuilding
+from app.modules.m12_mentions import BrandMentions
+from app.modules.m16_ai_visibility import AIVisibility
 from app.modules.m17_geo import GeoContent
 
 log = logging.getLogger(__name__)
@@ -51,13 +55,13 @@ def all_modules() -> list[CheckModule]:
         CrawlingIndexing(),
         Performance(),
         SchemaMarkup(),
-        PlannedModule("backlinks", 10, "Backlink Analysis", Category.OFFPAGE, 4),
-        PlannedModule("outreach", 11, "Link Building & Outreach", Category.OFFPAGE, 4),
-        PlannedModule("brand_mentions", 12, "Brand Mentions & Reputation", Category.OFFPAGE, 4),
+        BacklinkAnalysis(),
+        LinkBuilding(),
+        BrandMentions(),
         PlannedModule("gbp", 13, "Google Business Profile", Category.LOCAL, 5),
         PlannedModule("citations", 14, "Citations & NAP", Category.LOCAL, 5),
         PlannedModule("reviews", 15, "Review Management", Category.LOCAL, 5),
-        PlannedModule("ai_visibility", 16, "AI Search Visibility", Category.GEO, 4),
+        AIVisibility(),
         GeoContent(),
     ]
     return order_modules(mods)

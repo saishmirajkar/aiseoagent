@@ -33,7 +33,7 @@ nav { display: flex; gap: 18px; align-items: center; }
 .error { color: var(--fail); }
 .ok { color: var(--pass); }
 .label { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
-input, select { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; }
+input, select, textarea { font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; width: 100%; }
 input[type="checkbox"] { width: auto; }
 label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
 button, .button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--fg); border-radius: 6px; padding: 7px 12px; display: inline-block; }

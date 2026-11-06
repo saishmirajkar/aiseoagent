@@ -99,7 +99,10 @@ def test_missing_check_results_are_filled():
 
 def test_registry_has_17_modules_in_order():
     mods = all_modules()
-    assert [m.number for m in mods] == list(range(1, 18))
+    assert sorted(m.number for m in mods) == list(range(1, 18))
+    pos = {m.key: i for i, m in enumerate(mods)}
+    for m in mods:  # every module runs after the modules it depends on
+        assert all(pos[d] < pos[m.key] for d in m.depends_on), m.key
     assert len({m.key for m in mods}) == 17
     for m in mods:
         assert len({c.id for c in m.checks}) == len(m.checks), m.key

@@ -13,7 +13,7 @@ from sqlalchemy import text
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import __version__
-from app.api import audits, settings
+from app.api import audits, datalayer, settings
 from app.auth import router as auth_router
 from app.config import env
 from app.db.session import get_engine
@@ -35,6 +35,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(audits.router)
     app.include_router(settings.router)
+    app.include_router(datalayer.router)
 
     @app.get("/api/health", include_in_schema=False)
     def health() -> JSONResponse:

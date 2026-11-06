@@ -33,6 +33,17 @@ MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", 
 SOURCE_LABEL = "Common Crawl"
 
 
+def release_key(release: str) -> tuple[int, int]:
+    """Chronological sort key (end year, end month) for ids like cc-main-2025-26-nov-dec-jan."""
+    import re
+    m = re.match(r"cc-main-(\d{4})(?:-(\d{2}))?-([a-z]{3})-([a-z]{3})-([a-z]{3})$", release or "")
+    if not m:
+        return (0, 0)
+    start, wrap, end_month = int(m.group(1)), m.group(2), m.group(5)
+    year = start + 1 if wrap else start
+    return (year, MONTHS.index(end_month) + 1 if end_month in MONTHS else 0)
+
+
 def ranks_url(release: str) -> str:
     return f"{BASE}/{release}/domain/{release}-domain-ranks.txt.gz"
 

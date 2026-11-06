@@ -13,7 +13,7 @@ sends or changes anything on the audited site or anywhere else.
 | 1 | Crawler + Site Model, Technical Audit (6), Crawling & Indexing (7, crawl-based), Meta Tags (3), Image SEO (5, deterministic), Postgres job queue, reports, dashboard | **Built** |
 | 2 | Performance (PageSpeed), Schema detection/validation/generation, Internal Linking | **Built** |
 | 3 | LLM layer: keywords, intent, content gaps, rewrites, alt text, GEO content | **Built** (live test pending the API key) |
-| 4 | Own data layer (keyword engine, Common Crawl authority, backlink discovery, Colab import), modules 10, 11, 12, 16 | Planned |
+| 4 | Own data layer (keyword engine, Common Crawl authority, backlink discovery, Colab import), modules 10, 11, 12, 16 | **Built** (Brave-dependent parts tested with recorded responses until the key works) |
 | 5 | Local SEO (13–15), dashboard polish, PDF export, audit comparison, deployment hardening | Planned |
 
 Modules that are not built yet still appear in every report as **NOT_CHECKED** ("planned for
@@ -82,7 +82,27 @@ Implemented in `backend/app/scoring/scorer.py`.
 * **Priority.** impact ÷ effort (High 3, Med 2, Low 1). Ties go to FAIL before WARNING, then to
   more affected URLs. "Top 10 fixes" are the first ten FAIL/WARNING checks in this order.
 
-Keyword difficulty is documented here when it is built (Phase 4).
+### Keyword difficulty (our own estimate, label "Estimate")
+
+From the top 10 search results for the keyword (Brave Search), in `backend/app/datalayer/keywords.py`:
+
+| Component | How it is measured | Default weight |
+|---|---|---|
+| authority | mean Authority Score of the ranking domains (domains outside the table count as 10) | 0.55 |
+| content_depth | median word count of the top 5 ranking pages; 2,500+ words = 100 | 0.15 |
+| exact_match_titles | share of the top 10 titles containing every word of the keyword × 100 | 0.15 |
+| intent_match | share of results whose URL/title pattern matches the keyword's intent × 100 | 0.15 |
+
+`difficulty = Σ weight × component ÷ Σ weight` over the components that could be measured (e.g.
+content depth is skipped when ranking pages cannot be fetched). Weights are editable in
+Settings → Data layer.
+
+### Authority Score (Common Crawl, 0–100)
+
+`combined_rank = √(harmonic-centrality rank × PageRank rank)`;
+`score = round(100 × (1 − ln(combined_rank) ÷ ln(100,000,000)))`, clamped to 1–100.
+Rank 1 → 100, rank 100 → 75, rank 10,000 → 50, rank 1,000,000 → 25. Domains outside the loaded
+top N (default 1,000,000) are reported as "Low authority (outside top N)".
 
 ## Data sources in Phase 2
 
@@ -130,6 +150,36 @@ Implemented in `backend/app/llm/` and used by modules 1, 2, 3, 4, 5 and 17.
   most important pages are analysed (default 60; content gaps 20; GEO 15; alt text 30 images).
 * **Not asked of the model:** search volume, keyword difficulty, backlinks or rankings. These stay
   NOT_CHECKED until the keyword engine and data layer (Phase 4).
+
+## Own data layer (Phase 4)
+
+* **Authority table.** The worker streams the latest Common Crawl domain-ranks file (≈2.5 GB gzip)
+  over HTTPS, keeps the top N rows (default 1,000,000 ≈ 2–3 minutes) and stops downloading.
+  Nothing is written to disk. It loads on first start, refreshes quarterly, and can be refreshed
+  from Settings. The current and previous release are kept (≈60 MB per million domains incl. index).
+* **Keyword engine.** Ideas from the keyword map, Google Autocomplete (seed + question words + a–z
+  for the top seeds; ≤1 request/second; cached 30 days) and questions shown in search results.
+  Volume, in order: Google Ads Keyword Planner → Search Console → Google Trends relative interest
+  (best-effort; often rate-limited from server IPs) → NOT_CHECKED. A Trends index is converted to
+  a volume only when a keyword with known volume can anchor it.
+* **Backlinks.** Live discovery searches for pages mentioning the domain/brand (excluding the
+  site), fetches each result (robots.txt respected) and keeps verified links — always labelled
+  "Discovered backlinks (sample)". Pages that mention the brand without linking feed module 12 as
+  unlinked mentions. Full referring-domain lists come from the Colab notebook below.
+* **Budgets.** Brave queries: 60 per audit / 1,000 per month (usage ledger); search results cached
+  7 days, keyword SERPs 30 days.
+
+### Colab notebook: full referring domains (`notebooks/cc_inlinks.ipynb`)
+
+1. Set the `IMPORT_API_TOKEN` secret in Replit (any long random string) and restart.
+2. Settings → Watchlist: add your sites and competitors.
+3. Open the notebook in Google Colab (File → Upload notebook), set `APP_URL` in the first cell,
+   run all cells and paste the token when asked.
+4. It streams the Common Crawl domain graph (vertices ≈1 GB, edges ≈7.6 GB; nothing large is
+   stored), filters edges pointing at your watchlist with `awk`, and uploads one referring-domain
+   list per domain to `POST /api/import/inlinks`. Expect roughly 20–60 minutes.
+5. Re-run after new Common Crawl releases; the app keeps the two latest imports per domain and
+   reports new/lost referring domains between them.
 
 ## Local development
 
@@ -211,9 +261,9 @@ Notes:
 | `ADMIN_PASSWORD` | Login (required) | Choose a strong password. |
 | `SESSION_SECRET` | Signing the session cookie (required) | `python -c "import secrets;print(secrets.token_urlsafe(32))"` |
 | `ANTHROPIC_API_KEY` | LLM layer (Phase 3+) | console.anthropic.com → API Keys. |
-| `BRAVE_API_KEY` | Search provider (Phase 4) | api-dashboard.search.brave.com → subscribe to a plan → API Keys. |
+| `BRAVE_API_KEY` | Search provider (keyword difficulty, backlinks, mentions, outreach) | api-dashboard.search.brave.com → subscribe to a plan → API Keys. |
 | `PAGESPEED_API_KEY` | Performance (Phase 2) | Google Cloud Console → enable *PageSpeed Insights API* → Credentials → API key (restrict it to that API). |
-| `IMPORT_API_TOKEN` | Colab inlinks import (Phase 4) | Any long random string; paste the same value into the notebook. |
+| `IMPORT_API_TOKEN` | Colab inlinks import | Any long random string; paste the same value into the notebook. |
 | `GCP_SERVICE_ACCOUNT_JSON`, `GCP_PROJECT`, `GCP_LOCATION` | Gemini via Vertex AI, optional (Phase 4) | Google Cloud Console → enable *Vertex AI API* → IAM → service account with role *Vertex AI User* → Keys → JSON. Paste the whole JSON as the secret. |
 | `GSC_SERVICE_ACCOUNT_JSON` | Search Console, optional | Service account JSON key; add the service-account e-mail as a user of the Search Console property. |
 | `GOOGLE_ADS_DEVELOPER_TOKEN`, `GOOGLE_ADS_CLIENT_ID`, `GOOGLE_ADS_CLIENT_SECRET`, `GOOGLE_ADS_REFRESH_TOKEN`, `GOOGLE_ADS_CUSTOMER_ID` | Keyword Planner volumes, optional | Google Ads manager account → API Center → developer token (*Basic access* is required for real data) + an OAuth client and refresh token. |

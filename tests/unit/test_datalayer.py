@@ -27,6 +27,9 @@ def test_authority_score_and_names():
                                                              "cc-main-2025-sep-oct-nov"]
     assert au.candidate_releases(date(2026, 11, 6))[1] == "cc-main-2026-aug-sep-oct"
     assert au._candidates("www.blog.example.co.uk") == ["blog.example.co.uk", "example.co.uk", "co.uk"]
+    rels = ["cc-main-2026-sep-oct-nov", "cc-main-2026-oct-nov-dec", "cc-main-2025-26-nov-dec-jan", "cc-main-2025-oct-nov-dec"]
+    assert sorted(rels, key=au.release_key, reverse=True) == [
+        "cc-main-2026-oct-nov-dec", "cc-main-2026-sep-oct-nov", "cc-main-2025-26-nov-dec-jan", "cc-main-2025-oct-nov-dec"]
 
 
 @pytest.mark.db

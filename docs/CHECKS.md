@@ -4,11 +4,27 @@ Generated from the module registry (`scripts/gen_checks_doc.py`). Statuses: PASS
 
 ## 1. Keyword Research & Mapping (On-page)
 
-_Not built yet; planned for build phase 3. Reported as NOT_CHECKED._
+| Check ID | Check | Impact | Effort | Fix |
+|---|---|---|---|---|
+| `kw.mapping` | Keyword map (primary keyword per page) | Med | Med | Give unmapped pages a clear focus (or merge/noindex them); use the map to steer titles and H1s. |
+| `kw.cannibalization` | Keyword cannibalization | Med | Med | Pick one page per query: merge or differentiate the others and link them to the chosen page. |
+| `kw.owner_keywords` | Owner's target keywords without a matching page | Med | Med | Create or retarget a page for each unmatched keyword. |
+| `kw.competitor_gaps` | Keyword gaps vs competitors | Med | High | Plan content for the most relevant gaps (new pages or sections). |
+| `kw.search_volume` | Search volume for mapped keywords | Med | Low | Prioritise by volume and intent. |
+| `kw.difficulty` | Keyword difficulty | Low | Low | Target winnable keywords first. |
+| `kw.opportunities` | Keyword opportunities not covered by any page | Med | Med | Add the most relevant ones to existing pages (sections/FAQs) or create new pages. |
 
 ## 2. Content Optimization (On-page)
 
-_Not built yet; planned for build phase 3. Reported as NOT_CHECKED._
+| Check ID | Check | Impact | Effort | Fix |
+|---|---|---|---|---|
+| `content.thin` | Thin content | Med | Med | Expand with useful, specific content, or merge/noindex pages that cannot be improved. |
+| `content.duplicates` | Duplicate or near-duplicate pages | Med | Med | Merge duplicates, or set a canonical to the preferred page and differentiate the others. |
+| `content.repeated_blocks` | Large text blocks repeated across pages | High | Med | Remove placeholder/template text and replace it with content specific to each page. |
+| `content.h1` | Missing or multiple H1 headings | Med | Low | Give each page exactly one descriptive H1 that includes its main topic. |
+| `content.heading_order` | Skipped heading levels | Low | Low | Use headings in order (H1 → H2 → H3) and don't pick levels for styling. |
+| `content.readability` | Hard-to-read content (Flesch Reading Ease < 30) | Low | Med | Shorten sentences, use plain words, add lists and subheadings. |
+| `content.gaps` | Content gaps vs search intent | High | Med | Add the suggested sections and FAQs (see the generated content brief). |
 
 ## 3. Meta Tags (On-page)
 
@@ -123,15 +139,28 @@ _Not built yet; planned for build phase 3. Reported as NOT_CHECKED._
 
 ## 10. Backlink Analysis (Off-page)
 
-_Not built yet; planned for build phase 4. Reported as NOT_CHECKED._
-
-## 11. Link Building & Outreach (Off-page)
-
-_Not built yet; planned for build phase 4. Reported as NOT_CHECKED._
+| Check ID | Check | Impact | Effort | Fix |
+|---|---|---|---|---|
+| `bl.authority` | Domain Authority Score | Med | High | Earn links from relevant, authoritative sites (see Link Building & Outreach). |
+| `bl.discovered` | Discovered backlinks (sample) | Med | High | Build more links from relevant sites; reclaim unlinked mentions. |
+| `bl.referring_domains` | Referring domains (full list) and new/lost domains | Med | High | Investigate lost referring domains; keep earning new ones. |
+| `bl.suspicious` | Suspicious backlink patterns | Med | Med | Review the flagged referrers; remove paid/spam links where you can. |
+| `bl.link_gap` | Competitor link gap | Med | High | Pitch these domains (they are added to the outreach list). |
 
 ## 12. Brand Mentions & Reputation (Off-page)
 
-_Not built yet; planned for build phase 4. Reported as NOT_CHECKED._
+| Check ID | Check | Impact | Effort | Fix |
+|---|---|---|---|---|
+| `mentions.unlinked` | Unlinked brand mentions | Med | Low | Contact each site and ask for the mention to link to your site (drafts in Outreach). |
+| `mentions.share` | Brand visibility vs competitors | Med | High | Grow mentions through PR, partnerships, reviews and community participation. |
+| `mentions.reviews` | Public review sentiment | Med | Med | Address recurring complaints and ask happy customers for reviews. |
+
+## 11. Link Building & Outreach (Off-page)
+
+| Check ID | Check | Impact | Effort | Fix |
+|---|---|---|---|---|
+| `out.prospects` | Outreach prospects | Med | High | Work through the list in the Outreach tracker (highest score first). |
+| `out.drafts` | Personalised outreach email drafts | Low | Med | Review, personalise further and send from your own mailbox; update the tracker status. |
 
 ## 13. Google Business Profile (Local)
 
@@ -147,8 +176,19 @@ _Not built yet; planned for build phase 5. Reported as NOT_CHECKED._
 
 ## 16. AI Search Visibility (AI Search & GEO)
 
-_Not built yet; planned for build phase 4. Reported as NOT_CHECKED._
+| Check ID | Check | Impact | Effort | Fix |
+|---|---|---|---|---|
+| `ai.crawler_access` | AI crawlers allowed in robots.txt | Med | Low | Allow the AI crawlers you want to be visible in (or keep blocks you chose deliberately). |
+| `ai.llms_txt` | llms.txt file | Low | Low | Publish /llms.txt (a draft is generated below). |
+| `ai.visibility` | Brand visibility in AI answers (sample) | High | High | Strengthen GEO content, earn mentions on sites AI assistants cite, and keep AI crawlers allowed. |
 
 ## 17. GEO Content Optimization (AI Search & GEO)
 
-_Not built yet; planned for build phase 3. Reported as NOT_CHECKED._
+| Check ID | Check | Impact | Effort | Fix |
+|---|---|---|---|---|
+| `geo.answer_first` | Direct answer near the top of the page | High | Low | Open with a 40-60 word answer/definition (see the generated rewrite), then go into detail. |
+| `geo.question_headings` | Question-style headings | Low | Low | Rephrase some H2/H3 headings as the questions they answer. |
+| `geo.faq` | FAQ section on key pages | Med | Low | Add a short FAQ section (AI drafts are attached where available; verify the answers). |
+| `geo.sources_and_stats` | Statistics and cited sources | Med | Med | Add specific figures and link to authoritative sources for key claims. |
+| `geo.authorship` | Author bylines and dates on articles | Med | Low | Show author name (linked to a bio) and published/updated dates on every article. |
+| `geo.eeat_site` | Site trust signals (about, contact, policies, profiles) | Med | Low | Add the missing pages/signals listed in the evidence. |

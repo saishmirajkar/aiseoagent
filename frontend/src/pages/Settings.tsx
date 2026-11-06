@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, put } from "../api";
+import { api, post, put } from "../api";
 
 const SECTION_LABELS: Record<string, string> = {
   crawl: "Crawl limits",
@@ -8,6 +8,7 @@ const SECTION_LABELS: Record<string, string> = {
   scoring: "Scoring weights",
   retention: "Data retention",
   llm: "AI (LLM) analysis",
+  data: "Data layer (keywords, authority, backlinks)",
 };
 
 const KEY_LABELS: Record<string, string> = {
@@ -80,6 +81,8 @@ export default function Settings() {
       </div>
       <p className="muted small">Report storage: {s.report_storage === "replit" ? "Replit Object Storage" : "PostgreSQL"}</p>
 
+      <DataLayer />
+
       {Object.entries(draft).map(([section, fields]: [string, any]) => (
         <section key={section}>
           <h2>{SECTION_LABELS[section] || section}</h2>
@@ -115,6 +118,70 @@ export default function Settings() {
         {msg && <span className="ok">{msg}</span>}
         {err && <span className="error">{err}</span>}
       </div>
+    </>
+  );
+}
+
+
+function DataLayer() {
+  const [auth, setAuth] = useState<any>(null);
+  const [watch, setWatch] = useState<any[]>([]);
+  const [domain, setDomain] = useState("");
+  const [kind, setKind] = useState("client");
+  const [msg, setMsg] = useState("");
+
+  const load = () => {
+    api("/api/authority").then(setAuth);
+    api<any[]>("/api/watchlist").then(setWatch);
+  };
+  useEffect(load, []);
+
+  const refresh = async () => {
+    const r = await post("/api/authority/refresh");
+    setMsg(r.message);
+    setTimeout(load, 2000);
+  };
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!domain.trim()) return;
+    setWatch(await post("/api/watchlist", { domain, kind }));
+    setDomain("");
+  };
+  const remove = async (d: string) => setWatch(await api(`/api/watchlist/${encodeURIComponent(d)}`, { method: "DELETE" }));
+  const current = auth?.releases?.find((r: any) => r.current);
+
+  return (
+    <>
+      <h2>Authority table (Common Crawl)</h2>
+      <div className="card stack">
+        <div>
+          {current
+            ? <>Current release <b>{current.release}</b>: {current.rows.toLocaleString()} domains (top {current.top_n.toLocaleString()}), loaded {new Date(current.finished_at).toLocaleDateString()}.</>
+            : <span className="muted">Not loaded yet — the worker loads it automatically on first start.</span>}
+        </div>
+        {auth?.releases?.filter((r: any) => !r.current).map((r: any) => (
+          <div key={r.release} className="small muted">{r.release}: {r.status}{r.rows ? `, ${r.rows.toLocaleString()} domains` : ""}{r.error ? ` — ${r.error}` : ""}</div>
+        ))}
+        <div className="row gap"><button onClick={refresh}>Refresh now</button><span className="muted small">{msg || "Refreshes quarterly on its own."}</span></div>
+      </div>
+
+      <h2>Watchlist (full referring-domain import)</h2>
+      <p className="muted small">Domains whose complete referring-domain lists the Colab notebook (notebooks/cc_inlinks.ipynb) imports from Common Crawl.</p>
+      <form className="row gap wrapline" onSubmit={add}>
+        <input className="grow" placeholder="example.com" value={domain} onChange={(e) => setDomain(e.target.value)} />
+        <select value={kind} onChange={(e) => setKind(e.target.value)} style={{ width: "auto" }}>
+          <option value="client">client</option>
+          <option value="competitor">competitor</option>
+        </select>
+        <button className="primary">Add</button>
+      </form>
+      <div className="scroll"><table>
+        <thead><tr><th>Domain</th><th>Type</th><th>Latest import</th><th></th></tr></thead>
+        <tbody>{watch.map((w) => (
+          <tr key={w.domain}><td>{w.domain}</td><td>{w.kind}</td><td>{w.latest_import || <span className="muted">never</span>}</td>
+            <td><button className="link" onClick={() => remove(w.domain)}>remove</button></td></tr>
+        ))}</tbody>
+      </table></div>
     </>
   );
 }

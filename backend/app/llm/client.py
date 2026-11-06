@@ -65,6 +65,17 @@ def _estimate_tokens(obj: Any) -> int:
     return 1
 
 
+@dataclass
+class Answer:
+    text: str
+    cited_urls: list[str]
+    searched: int
+    model: str
+
+
+WEB_SEARCH_USD = 0.01  # $10 per 1,000 searches
+
+
 class LLMClient:
     def __init__(self, settings: LLMSettings, *, audit_id: int | None, per_audit_usd: float,
                  per_month_usd: float, client: anthropic.AsyncAnthropic | None = None):
@@ -162,6 +173,68 @@ class LLMClient:
             raise LLMError(f"Anthropic API error {e.status_code}"[:300]) from e
         except anthropic.APIConnectionError as e:
             raise LLMError("Could not reach the Anthropic API") from e
+
+
+
+    async def answer(self, *, task: str, prompt: str, web_search: bool = True, max_uses: int = 2,
+                      max_tokens: int = 1500) -> Answer:
+        """Free-text answer (optionally grounded with Claude's web search tool). Not cached: answers vary by design."""
+        model, effort = self.model_for("reasoning")
+        est = worst_case_cost(model, _estimate_tokens(prompt) + (max_uses * 8000 if web_search else 0) + 300, max_tokens)
+        est += (max_uses * WEB_SEARCH_USD) if web_search else 0
+        await self._reserve(est)
+        messages: list[dict] = [{"role": "user", "content": prompt}]
+        kwargs: dict[str, Any] = dict(model=model, max_tokens=max_tokens, output_config={"effort": effort})
+        if web_search:
+            kwargs["tools"] = [{"type": "web_search_20260209", "name": "web_search", "max_uses": max_uses}]
+        texts: list[str] = []
+        cited: list[str] = []
+        searched = 0
+        cost = 0.0
+        served = model
+        try:
+            for _ in range(3):  # continue on pause_turn
+                try:
+                    resp = await self.client.messages.create(messages=messages, **kwargs)
+                except anthropic.APIStatusError as e:
+                    raise LLMError(f"Anthropic API error {e.status_code}: {getattr(e, 'message', '')}"[:300]) from e
+                except anthropic.APIConnectionError as e:
+                    raise LLMError("Could not reach the Anthropic API") from e
+                u = resp.usage
+                served = getattr(resp, "model", None) or model
+                stu = getattr(u, "server_tool_use", None)
+                n = getattr(stu, "web_search_requests", 0) or 0 if stu else 0
+                searched += n
+                cost += usage_cost(served, u.input_tokens, u.output_tokens,
+                                   getattr(u, "cache_creation_input_tokens", 0) or 0,
+                                   getattr(u, "cache_read_input_tokens", 0) or 0) + n * WEB_SEARCH_USD
+                for blk in resp.content:
+                    t = getattr(blk, "type", None)
+                    if t == "text":
+                        texts.append(blk.text)
+                        for c in getattr(blk, "citations", None) or []:
+                            url = getattr(c, "url", None)
+                            if url and url not in cited:
+                                cited.append(url)
+                    elif t == "web_search_tool_result" and isinstance(getattr(blk, "content", None), list):
+                        for r in blk.content:
+                            url = getattr(r, "url", None)
+                            if url and url not in cited:
+                                cited.append(url)
+                if resp.stop_reason == "refusal":
+                    raise LLMRefused("The model declined this prompt")
+                if resp.stop_reason != "pause_turn":
+                    break
+                messages = messages + [{"role": "assistant", "content": resp.content}]
+        finally:
+            async with self._lock:
+                self._reserved -= est
+            if cost:
+                self.stats.calls += 1
+                self.stats.usd += cost
+                self.stats.by_task[task] = round(self.stats.by_task.get(task, 0.0) + cost, 5)
+                await asyncio.to_thread(usage.record, "anthropic", task, 1, cost, self.audit_id)
+        return Answer(text="\n".join(texts).strip(), cited_urls=cited, searched=searched, model=served)
 
 
 def make_llm(ctx_settings, audit_id: int | None) -> LLMClient | None:
