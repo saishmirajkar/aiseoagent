@@ -161,6 +161,20 @@ class ScoringSettings(BaseModel):
     })
 
 
+class LLMSettings(BaseModel):
+    reasoning_model: str = Field("claude-sonnet-5-5", description="Keyword mapping, intent, content gaps, rewrites, GEO")
+    bulk_model: str = Field("claude-haiku-5-5", description="Alt text (vision) and other bulk tasks")
+    reasoning_effort: Literal["low", "medium", "high"] = "low"
+    bulk_effort: Literal["low", "medium", "high"] = "low"
+    max_pages: int = Field(60, ge=0, le=500, description="Pages analysed by the LLM per audit (most important first)")
+    content_gap_pages: int = Field(20, ge=0, le=200)
+    geo_pages: int = Field(15, ge=0, le=200)
+    link_suggestions_reviewed: int = Field(60, ge=0, le=500)
+    competitor_pages: int = Field(5, ge=0, le=20, description="Pages fetched per competitor URL")
+    cache_days: int = Field(30, ge=0, le=365)
+    refusal_fallbacks: bool = Field(True, description="Server-side fallback when the reasoning model declines")
+
+
 class RetentionSettings(BaseModel):
     page_text_audits_per_site: int = Field(3, ge=1, le=50)
     cache_cleanup_days: int = Field(1, ge=1)
@@ -172,3 +186,4 @@ class RuntimeSettings(BaseModel):
     thresholds: ThresholdSettings = Field(default_factory=ThresholdSettings)
     scoring: ScoringSettings = Field(default_factory=ScoringSettings)
     retention: RetentionSettings = Field(default_factory=RetentionSettings)
+    llm: LLMSettings = Field(default_factory=LLMSettings)

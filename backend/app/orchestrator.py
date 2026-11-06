@@ -155,8 +155,9 @@ async def run_audit(audit_id: int, *, verify_tls: bool = True) -> str:
             save_site_model(db, audit_id, site)
     await asyncio.to_thread(_save)
 
+    from app.llm.client import make_llm
     ctx = AuditContext(audit_id=audit_id, site=site, settings=settings, inputs=inputs,
-                       integrations=env().integration_status())
+                       integrations=env().integration_status(), llm=make_llm(settings, audit_id))
     for m in modules:
         if await cancelled():
             await asyncio.to_thread(_set_status, audit_id, "cancelled", None)

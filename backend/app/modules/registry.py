@@ -13,6 +13,8 @@ import traceback
 from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, Level, Status,
 )
+from app.modules.m01_keywords import KeywordResearch
+from app.modules.m02_content import ContentOptimization
 from app.modules.m03_meta_tags import MetaTags
 from app.modules.m04_internal_links import InternalLinking
 from app.modules.m05_images import ImageSEO
@@ -20,6 +22,7 @@ from app.modules.m06_technical import TechnicalAudit
 from app.modules.m07_indexing import CrawlingIndexing
 from app.modules.m08_performance import Performance
 from app.modules.m09_schema import SchemaMarkup
+from app.modules.m17_geo import GeoContent
 
 log = logging.getLogger(__name__)
 MODULE_TIMEOUT_S = 900
@@ -39,8 +42,8 @@ class PlannedModule(CheckModule):
 
 def all_modules() -> list[CheckModule]:
     mods: list[CheckModule] = [
-        PlannedModule("keywords", 1, "Keyword Research & Mapping", Category.ONPAGE, 3),
-        PlannedModule("content", 2, "Content Optimization", Category.ONPAGE, 3),
+        KeywordResearch(),
+        ContentOptimization(),
         MetaTags(),
         InternalLinking(),
         ImageSEO(),
@@ -55,7 +58,7 @@ def all_modules() -> list[CheckModule]:
         PlannedModule("citations", 14, "Citations & NAP", Category.LOCAL, 5),
         PlannedModule("reviews", 15, "Review Management", Category.LOCAL, 5),
         PlannedModule("ai_visibility", 16, "AI Search Visibility", Category.GEO, 4),
-        PlannedModule("geo_content", 17, "GEO Content Optimization", Category.GEO, 3),
+        GeoContent(),
     ]
     return order_modules(mods)
 

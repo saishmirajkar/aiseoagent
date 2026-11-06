@@ -7,6 +7,7 @@ const SECTION_LABELS: Record<string, string> = {
   thresholds: "Check thresholds",
   scoring: "Scoring weights",
   retention: "Data retention",
+  llm: "AI (LLM) analysis",
 };
 
 const KEY_LABELS: Record<string, string> = {

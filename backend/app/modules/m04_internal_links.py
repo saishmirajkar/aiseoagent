@@ -9,6 +9,8 @@ from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Level, Need, Status,
 )
 from app.modules.common import is_utility
+from app.llm.client import BOOL, INT, LLMError, STR, arr, obj
+from app.llm.summaries import chunks
 from app.modules.textsim import TfIdf
 from app.sitemodel.types import PageData
 
@@ -20,6 +22,12 @@ GENERIC = {"click here", "here", "read more", "learn more", "more", "more info",
 _TRIM = re.compile(r"^[\W_]+|[\W_]+$", re.UNICODE)
 TITLE_SPLIT = re.compile(r"\s+[|–—\-:·•]\s+")
 MAX_SUGGESTIONS_PER_TARGET = 3
+REVIEW_SYSTEM = """You review proposed internal links for a website SEO audit. For each numbered proposal
+decide whether a reader of the FROM page would genuinely benefit from a link to the TO page (keep=true) or
+whether the pages are unrelated/weakly related (keep=false). For kept links write a natural, descriptive
+anchor text of 2-6 words in the page language that names the TO page's topic (no "click here"), and a
+short reason. Return one entry per proposal id."""
+REVIEW_SCHEMA = obj({"links": arr(obj({"id": INT, "keep": BOOL, "anchor": STR, "reason": STR}))})
 MIN_SIMILARITY = 0.12
 MIN_SHARED_TOPICS = 2
 NEAR_DUPLICATE_SIM = 0.9  # near-identical pages: a duplicate-content issue, not a linking opportunity
@@ -156,11 +164,11 @@ class InternalLinking(CheckModule):
             r.affected = len(pairs)
             out.append(r)
 
-        out.append(self._suggestions(ctx, indexable, orphan_urls))
+        out.append(await self._suggestions(ctx, indexable, orphan_urls))
         return out
 
     # ------------------------------------------------------------------ suggestions
-    def _suggestions(self, ctx: AuditContext, indexable: list[PageData], orphan_urls: set[str]) -> CheckResult:
+    async def _suggestions(self, ctx: AuditContext, indexable: list[PageData], orphan_urls: set[str]) -> CheckResult:
         site = ctx.site
         th = ctx.settings.thresholds
         sources = [p for p in site.indexable_pages() if p.text]
@@ -197,13 +205,64 @@ class InternalLinking(CheckModule):
                                                         "anchor": page_label(t),
                                                         "code": f'<a href="{t.url}">{page_label(t)}</a>'}))
         items += self._clusters(site, sources, links_from)
+        sources_used = ["Crawl", "Text similarity (TF-IDF)"]
+        note = "anchors are drafts"
+        if items and ctx.llm is not None:
+            items, reviewed, err = await self._review(ctx, items)
+            if reviewed:
+                sources_used.append(f"AI review ({ctx.settings.llm.reasoning_model})")
+                note = f"{reviewed} suggestion(s) reviewed by AI for relevance and anchor text"
+            elif err:
+                note = f"anchors are drafts; AI review failed: {err}"
         if not items:
             return self.result("links.suggestions", Status.PASS, "No obvious internal link gaps found")
         n_targets = len({i.evidence["add_link_to"] for i in items})
         return CheckResult(spec=self.spec("links.suggestions"), status=Status.WARNING,
-                           summary=f"{len(items)} suggested link(s) to {n_targets} page(s) "
-                                   "(based on topic similarity and site sections; anchors are drafts)",
-                           items=items, affected=len(items), sources=["Crawl", "Text similarity (TF-IDF)"])
+                           summary=f"{len(items)} suggested link(s) to {n_targets} page(s) ({note})",
+                           items=items, affected=len(items), sources=sources_used)
+
+    async def _review(self, ctx: AuditContext, items: list[FindingItem]) -> tuple[list[FindingItem], int, str | None]:
+        """LLM keeps relevant suggestions and writes natural 2-6 word anchors; unreviewed ones are kept as-is."""
+        site = ctx.site
+        cap = ctx.settings.llm.link_suggestions_reviewed
+        order = sorted(range(len(items)), key=lambda k: -(items[k].evidence.get("similarity") or 0.5))
+        to_review = order[:cap]
+        decisions: dict[int, dict] = {}
+        err: str | None = None
+        for group in chunks(to_review, 20):
+            lines = []
+            for k in group:
+                it = items[k]
+                s, t = site.pages.get(it.url), site.pages.get(it.evidence["add_link_to"])
+                lines.append(f"{k}. FROM \"{page_label(s) if s else it.url}\" ({it.url}) TO \"{page_label(t) if t else ''}\" "
+                             f"({it.evidence['add_link_to']}); kind: {it.evidence['kind']}; "
+                             f"shared topics: {', '.join(it.evidence.get('shared_topics', [])) or 'n/a'}")
+            try:
+                data = await ctx.llm.json(task="links.review", role="reasoning", system=REVIEW_SYSTEM,
+                                          user="<data>\n" + "\n".join(lines) + "\n</data>",
+                                          schema=REVIEW_SCHEMA, max_tokens=4000)
+            except LLMError as e:
+                err = str(e)
+                break
+            for row in data.get("links", []):
+                if row.get("id") in group:
+                    decisions[row["id"]] = row
+        kept = []
+        for k, it in enumerate(items):
+            d = decisions.get(k)
+            if d is None:
+                kept.append(it)
+                continue
+            if not d.get("keep"):
+                continue
+            anchor = (d.get("anchor") or it.evidence["anchor"]).strip()[:70]
+            it.evidence["anchor"] = anchor
+            it.evidence["why"] = d.get("reason")
+            if it.generated_fix:
+                it.generated_fix["anchor"] = anchor
+                it.generated_fix["code"] = f'<a href="{it.evidence["add_link_to"]}">{anchor}</a>'
+            kept.append(it)
+        return kept, len(decisions), err
 
     @staticmethod
     def _clusters(site, sources: list[PageData], links_from: dict[str, set[str]]) -> list[FindingItem]:

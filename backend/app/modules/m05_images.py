@@ -1,16 +1,27 @@
 """Module 5: Image SEO (deterministic checks; vision alt text is added by the LLM layer)."""
 from __future__ import annotations
 
+import asyncio
 import re
 from collections import defaultdict
 
 from app.modules.base import (
-    AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Integration, Level, Need,
+    AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Integration, Level, Need, Status,
 )
 from app.crawler.urls import filename_of, host_of
+from app.llm.client import BOOL, INT, LLMError, STR, arr, obj
+from app.llm.summaries import chunks, site_context
+from app.modules.common import esc_attr
 from app.sitemodel.types import ImageAsset, ImageRec, PageData
 
 H, M, L = Level.HIGH, Level.MED, Level.LOW
+VISION_FORMATS = {"jpeg", "png", "gif", "webp"}
+ALT_SYSTEM = """You write alt text for website images, for accessibility and image search.
+For each numbered image: describe what it shows in context of the page, in at most 125 characters,
+without "image of"/"photo of", including a relevant keyword only if natural. If the image is inside a link,
+describe the link destination's purpose. Mark purely decorative images (backgrounds, dividers, spacers,
+abstract shapes) as decorative. Write in the page's language. Return one entry per image with its number."""
+ALT_SCHEMA = obj({"images": arr(obj({"index": INT, "alt": STR, "decorative": BOOL}))})
 # CDNs that replace uploaded file names with hashes (the site owner cannot choose names)
 PLATFORM_RENAMING_CDNS = {"framerusercontent.com": "Framer", "static.wixstatic.com": "Wix",
                           "images.ctfassets.net": "Contentful"}
@@ -264,6 +275,93 @@ class ImageSEO(CheckModule):
         out.append(self.by_population("img.broken", broken, len(checked), summary="Image URLs return errors")
                    if checked else self.not_applicable("img.broken", "No images checked"))
 
-        out.append(self.not_checked("img.alt_generation",
-                                    "Vision-model alt text is part of the LLM layer, which is not built yet"))
+        out.append(await self._alt_text(ctx, instances, out))
         return out
+
+    async def _alt_text(self, ctx: AuditContext, instances, results: list[CheckResult]) -> CheckResult:
+        """Vision model drafts alt text for images missing it (and image-only links with empty alt)."""
+        if ctx.llm is None:
+            return self.not_checked("img.alt_generation", "Anthropic API key not configured (add the ANTHROPIC_API_KEY secret)")
+        assets = ctx.site.images
+        need: dict[str, list] = {}
+        for p, i in instances:
+            empty_link = i.in_link and i.link_text_empty and i.alt is not None and not i.alt.strip()
+            if i.alt is None or empty_link:
+                need.setdefault(i.src, []).append((p, i))
+        cap = ctx.settings.budgets.alt_text_images_per_audit
+        usable, skipped = [], []
+        for src, uses in sorted(need.items(), key=lambda kv: -len(kv[1])):
+            a = assets.get(src)
+            if a is None or a.status != 200 or a.format not in VISION_FORMATS or (a.bytes or 0) > 4_500_000:
+                skipped.append(src)
+                continue
+            usable.append((src, uses))
+        if not need:
+            return self.result("img.alt_generation", Status.PASS, "No images need alt text")
+        if not usable:
+            return self.not_checked("img.alt_generation",
+                                    f"{len(need)} image(s) need alt text but none could be sent to the vision model "
+                                    "(unsupported format such as SVG/AVIF, too large, or not downloadable)")
+        todo = usable[:cap]
+        drafts: dict[str, dict] = {}
+        errors: list[str] = []
+        system = ALT_SYSTEM + "\n\nSite context:\n" + site_context(ctx.site, ctx.inputs)
+
+        async def call(group):
+            content = []
+            for n, (src, uses) in enumerate(group, 1):
+                p, i = uses[0]
+                h1 = next((t for lvl, t in p.headings if lvl == 1), "")
+                link = next((l.target for l in p.links if l.image_link), "") if i.in_link else ""
+                content.append({"type": "text", "text": f"<data>Image {n}: file {i.filename}; on page "
+                                f"\"{p.title or p.url}\" (H1: {h1 or 'none'}); "
+                                f"{'inside a link to ' + link if link else 'not a link'}; used on {len(uses)} page(s)</data>"})
+                content.append({"type": "image", "source": {"type": "url", "url": src}})
+            data = await ctx.llm.json(task="images.alt_text", role="bulk", system=system, user=content,
+                                      schema=ALT_SCHEMA, max_tokens=2000)
+            for row in data.get("images", []):
+                k = row.get("index", 0) - 1
+                if 0 <= k < len(group):
+                    drafts[group[k][0]] = row
+
+        async def batch(group):
+            try:
+                await call(group)
+            except LLMError as e:
+                if len(group) == 1:
+                    errors.append(f"{group[0][0]}: {e}")
+                    return
+                for one in group:  # isolate the image that could not be fetched/processed
+                    await batch([one])
+
+        await asyncio.gather(*(batch(g) for g in chunks(todo, 5)))
+        if not drafts:
+            return self.not_checked("img.alt_generation", f"Vision model failed: {errors[0]}" if errors else "No output")
+        items = []
+        for src, uses in todo:
+            d = drafts.get(src)
+            if not d:
+                continue
+            alt = "" if d.get("decorative") else d.get("alt", "").strip()[:125]
+            pages = list(dict.fromkeys(p.url for p, _ in uses))
+            fix = {"type": "alt_text", "decorative": bool(d.get("decorative")), "code": f'alt="{esc_attr(alt)}"'}
+            items.append(FindingItem(pages[0], {"src": src, "suggested_alt": alt or "(decorative: use alt=\"\")",
+                                                "pages": len(pages)}, generated_fix=fix, also_on=pages[1:]))
+        by_src = {i.evidence["src"]: i.generated_fix for i in items}
+        for r in results:
+            if r.spec.id in ("img.alt_missing", "img.alt_empty"):
+                for i in r.items:
+                    if i.generated_fix is None and i.evidence.get("src") in by_src:
+                        i.generated_fix = by_src[i.evidence["src"]]
+        notes = []
+        if len(usable) > cap:
+            notes.append(f"{len(usable) - cap} more image(s) over the per-audit cap of {cap}")
+        if skipped:
+            notes.append(f"{len(skipped)} image(s) in formats/sizes the model cannot read")
+        if errors:
+            notes.append(f"{len(errors)} failed")
+        r = CheckResult(spec=self.spec("img.alt_generation"), status=Status.WARNING,
+                        summary=f"Alt text drafted for {len(items)} image(s)" + (f" ({'; '.join(notes)})" if notes else ""),
+                        items=items, affected=len(items), total=len(need),
+                        sources=[f"AI vision ({ctx.settings.llm.bulk_model}) — review before publishing"])
+        return r

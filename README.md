@@ -12,7 +12,7 @@ sends or changes anything on the audited site or anywhere else.
 |---|---|---|
 | 1 | Crawler + Site Model, Technical Audit (6), Crawling & Indexing (7, crawl-based), Meta Tags (3), Image SEO (5, deterministic), Postgres job queue, reports, dashboard | **Built** |
 | 2 | Performance (PageSpeed), Schema detection/validation/generation, Internal Linking | **Built** |
-| 3 | LLM layer: keywords, intent, content gaps, rewrites, alt text, GEO content | Planned |
+| 3 | LLM layer: keywords, intent, content gaps, rewrites, alt text, GEO content | **Built** (live test pending the API key) |
 | 4 | Own data layer (keyword engine, Common Crawl authority, backlink discovery, Colab import), modules 10, 11, 12, 16 | Planned |
 | 5 | Local SEO (13–15), dashboard polish, PDF export, audit comparison, deployment hardening | Planned |
 
@@ -105,6 +105,31 @@ Keyword difficulty is documented here when it is built (Phase 4).
   instead of a FAIL. Link suggestions use TF-IDF similarity over page text (terms that appear on
   most pages, such as navigation and footer text, are ignored), require at least two shared topic
   terms, skip near-duplicate pages, and add pillar ↔ cluster links within URL sections.
+
+## AI (LLM) layer
+
+Implemented in `backend/app/llm/` and used by modules 1, 2, 3, 4, 5 and 17.
+
+* **Models** (Settings → AI): `claude-sonnet-5-5` for judgment (keyword mapping, intent, content gaps,
+  title/description rewrites, link review, GEO) and `claude-haiku-5-5` for vision alt text. Effort
+  defaults to `low`. Sonnet calls opt into server-side refusal fallback.
+* **Inputs.** The model only ever sees compact page summaries: URL, title, meta description, H1–H3
+  outline and an excerpt of the page's *main* text. Raw HTML is never sent. Main text excludes
+  sentences repeated across many pages (navigation, footers, template text). Page content is passed
+  as delimited data with an instruction to ignore any instructions inside it.
+* **Outputs** are JSON validated against a schema. Measurable things are computed in code, never
+  asked of the model (title pixel width, description length, keyword presence, readability).
+  Rewrites are re-checked against the same limits, and FAQ JSON-LD is validated like all schema.
+  The model is told not to invent prices, specs, dates or claims; FAQ answers it cannot take from
+  the page are left blank for the owner.
+* **Cost control.** Before each call, the worst-case cost (input written to cache + the full
+  `max_tokens` of output) is checked against the per-audit cap (default $2) and the monthly cap
+  (default $30). If either would be exceeded, the call is skipped and the affected checks report
+  NOT_CHECKED with the reason. Actual cost from the API's usage numbers goes into the usage ledger;
+  the audit shows its total. Identical requests are served from a 30-day cache at no cost. Only the
+  most important pages are analysed (default 60; content gaps 20; GEO 15; alt text 30 images).
+* **Not asked of the model:** search volume, keyword difficulty, backlinks or rankings. These stay
+  NOT_CHECKED until the keyword engine and data layer (Phase 4).
 
 ## Local development
 
