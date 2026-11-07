@@ -237,8 +237,13 @@ class LLMClient:
         return Answer(text="\n".join(texts).strip(), cited_urls=cited, searched=searched, model=served)
 
 
-def make_llm(ctx_settings, audit_id: int | None) -> LLMClient | None:
-    """LLM client for an audit, or None when no API key is configured."""
+def make_llm(ctx_settings, audit_id: int | None):
+    """LLM client for an audit: Anthropic API, manual mode, or None when neither is configured."""
+    if ctx_settings.llm.provider == "manual":
+        from app.llm.manual import LABEL, ManualLLM
+        # findings are labelled with who actually answered
+        ctx_settings.llm.reasoning_model = ctx_settings.llm.bulk_model = LABEL
+        return ManualLLM(audit_id)
     if not env().anthropic_api_key:
         return None
     return LLMClient(ctx_settings.llm, audit_id=audit_id, per_audit_usd=ctx_settings.budgets.llm_usd_per_audit,

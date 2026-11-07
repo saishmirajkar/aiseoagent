@@ -162,6 +162,8 @@ class ScoringSettings(BaseModel):
 
 
 class LLMSettings(BaseModel):
+    provider: Literal["anthropic", "manual"] = Field(
+        "anthropic", description="'manual': AI requests are saved and answered by hand (no API key needed)")
     reasoning_model: str = Field("claude-sonnet-5-5", description="Keyword mapping, intent, content gaps, rewrites, GEO")
     bulk_model: str = Field("claude-haiku-5-5", description="Alt text (vision) and other bulk tasks")
     reasoning_effort: Literal["low", "medium", "high"] = "low"

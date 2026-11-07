@@ -151,6 +151,25 @@ Implemented in `backend/app/llm/` and used by modules 1, 2, 3, 4, 5 and 17.
 * **Not asked of the model:** search volume, keyword difficulty, backlinks or rankings. These stay
   NOT_CHECKED until the keyword engine and data layer (Phase 4).
 
+### Manual AI mode (no API key)
+
+Settings → AI → provider `manual`. Audits save each AI request (prompt + JSON schema) instead of
+calling an API; answers are supplied by hand (for example by Claude in a Claude Code session),
+validated against the schema, and served from the cache when the audit is re-run:
+
+```bash
+PYTHONPATH=backend python -m app.llm.manual export answers/ --task keywords.map
+```
+
+```bash
+PYTHONPATH=backend python -m app.llm.manual import answers/
+```
+
+Write each answer as `answers/<id>.answer.json` next to its `<id>.request.json`. Keyword mapping
+must be answered first (other tasks use it), then re-run the audit and answer the rest. The AI
+visibility test needs live web search and is NOT_CHECKED in this mode. Findings are labelled
+"Claude (manual mode via Claude Code)".
+
 ## Own data layer (Phase 4)
 
 * **Authority table.** The worker streams the latest Common Crawl domain-ranks file (≈2.5 GB gzip)

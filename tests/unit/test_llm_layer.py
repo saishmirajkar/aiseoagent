@@ -369,3 +369,31 @@ def test_geo_module():
     ee = r["geo.eeat_site"]
     assert ee.status == Status.WARNING and "contact page" in ee.items[0].evidence["missing"]
     assert "about page" not in ee.items[0].evidence["missing"]
+
+
+@pytest.mark.db
+def test_manual_mode_round_trip(database_url, tmp_path):
+    import json as _json
+    from app.llm import manual
+    from app.llm.client import make_llm
+    s = RuntimeSettings()
+    s.llm.provider = "manual"
+    llm = make_llm(s, audit_id=None)
+    assert isinstance(llm, manual.ManualLLM) and s.llm.reasoning_model == manual.LABEL
+    schema = obj({"answer": STR})
+    user = f"unique manual question {tmp_path.name}"
+    with pytest.raises(manual.AwaitingAnswer):
+        asyncio.run(llm.json(task="t.manual", role="reasoning", system="sys", user=user, schema=schema, max_tokens=100))
+    assert manual.export(tmp_path, "t.manual", None) >= 1
+    req = next(p for p in tmp_path.glob("*.request.json") if user in p.read_text())
+    short = req.name.split(".")[0]
+    (tmp_path / f"{short}.answer.json").write_text(_json.dumps({"answer": 42}))  # wrong type -> rejected
+    n, problems = manual.import_answers(tmp_path)
+    assert n == 0 and "expected string" in problems[0]
+    (tmp_path / f"{short}.answer.json").write_text(_json.dumps({"answer": "forty-two"}))
+    n, problems = manual.import_answers(tmp_path)
+    assert n >= 1 and not [p for p in problems if short in p]
+    got = asyncio.run(llm.json(task="t.manual", role="reasoning", system="sys", user=user, schema=schema, max_tokens=100))
+    assert got == {"answer": "forty-two"}
+    with pytest.raises(LLMError, match="web search"):
+        asyncio.run(llm.answer(task="x", prompt="y"))
