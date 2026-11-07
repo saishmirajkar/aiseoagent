@@ -5,6 +5,8 @@ Every query is budget-checked (per audit and per month, counted in the usage led
 from __future__ import annotations
 
 import asyncio
+import html
+import re
 import time
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass, field
@@ -119,6 +121,15 @@ class BraveSearch(SearchProvider):
         return out
 
 
+_TAG = re.compile(r"<[^>]+>")
+
+
+def clean_question(q: str | None, max_len: int = 120) -> str | None:
+    """Question text as a searcher would type it: no markup; forum post bodies (too long) are dropped."""
+    q = " ".join(html.unescape(_TAG.sub(" ", q or "")).split())
+    return q if q and len(q) <= max_len else None
+
+
 def parse_brave(query: str, d: dict) -> SearchResponse:
     out = SearchResponse(query=query)
     for r in (d.get("web") or {}).get("results", []) or []:
@@ -129,7 +140,8 @@ def parse_brave(query: str, d: dict) -> SearchResponse:
                                             snippet=" ".join([snippet] + extra[:2])[:600], age=r.get("age")))
     for block in ("faq", "discussions"):
         for r in (d.get(block) or {}).get("results", []) or []:
-            q = r.get("question") or (r.get("data") or {}).get("question") or (r.get("title") if block == "discussions" else None)
+            q = clean_question(r.get("question") or (r.get("data") or {}).get("question")
+                               or (r.get("title") if block == "discussions" else None))
             if q and q not in out.questions:
                 out.questions.append(q)
     return out

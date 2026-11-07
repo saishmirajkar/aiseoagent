@@ -12,7 +12,7 @@ from app.datalayer import keywords as ke
 from app.modules.base import Status
 from app.modules.m01_keywords import KeywordResearch
 from app.providers.search import (
-    BraveSearch, SearchBudgetExceeded, SearchResponse, SearchResult, parse_brave,
+    BraveSearch, SearchBudgetExceeded, SearchResponse, SearchResult, clean_question, parse_brave,
 )
 
 from tests.unit.helpers import BASE, ctx, offline_settings, page, run, site
@@ -65,6 +65,12 @@ def test_parse_brave():
     assert [x.url for x in r.results] == ["https://a.com/x"] and "more" in r.results[0].snippet
     assert r.questions == ["How fast is a go kart?", "Best kart for kids?"]
     assert SearchResponse.from_json(r.to_json()).results[0].title == "Go kart price list"
+
+
+def test_clean_question_strips_markup_and_drops_post_bodies():
+    assert clean_question("<p>why isn&#39;t karting\n popular?</p>") == "why isn't karting popular?"
+    assert clean_question("<p>" + "long forum post " * 20 + "</p>") is None
+    assert clean_question("") is None
 
 
 @pytest.mark.db

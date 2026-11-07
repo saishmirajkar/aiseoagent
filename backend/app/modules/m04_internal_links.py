@@ -275,7 +275,9 @@ class InternalLinking(CheckModule):
         items = []
         origin = site.facts.origin
         for sec, pages in sections.items():
-            members = [p for p in pages if len([s for s in urlsplit(p.url).path.split("/") if s]) >= 2]
+            # sorted so the proposals (and the cached AI review of them) don't change with crawl order
+            members = sorted((p for p in pages if len([s for s in urlsplit(p.url).path.split("/") if s]) >= 2),
+                             key=lambda p: p.url)
             if len(members) < 3:
                 continue
             pillar = next((site.pages[u] for u in (f"{origin}/{sec}", f"{origin}/{sec}/")

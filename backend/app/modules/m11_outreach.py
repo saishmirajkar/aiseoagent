@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from collections import Counter
 from urllib.parse import urlsplit
 
 from sqlalchemy import select
@@ -32,7 +33,7 @@ from app.providers.search import SearchError
 H, M, L = Level.HIGH, Level.MED, Level.LOW
 EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,24}\b")
 SKIP_HOSTS = SOCIAL_HOSTS + ("wikipedia.org", "amazon.", "flipkart.", "ebay.", "google.", "youtube.", "indiamart.",
-                             "justdial.", "alibaba.", "medium.com")
+                             "justdial.", "alibaba.", "medium.com", "github.com", "jotform.com")
 DRAFT_SYSTEM = """You draft short, personalised outreach emails for a website's link building. Never claim
 anything about the sender's business that is not in the provided site description. Keep each email under
 140 words, friendly and specific to the prospect's page; propose one concrete thing (adding a link to an
@@ -74,7 +75,11 @@ class LinkBuilding(CheckModule):
         site_domain = registered(ctx.site.facts.host)
         comp_domains = {registered(host_of(c)) for c in ctx.inputs.competitors}
         kmap = ctx.shared.get("keyword_map", {})
-        topic = (ctx.inputs.business_type or next((r.get("cluster") for r in kmap.values() if r.get("cluster")), None)
+        brand_words = kw_tokens(brand_of(ctx) or "") | kw_tokens(site_domain.split(".")[0])
+        clusters = Counter(r["cluster"] for r in kmap.values()
+                           if r.get("cluster") and not (kw_tokens(r["cluster"]) & brand_words))
+        topic = (ctx.inputs.business_type or (ctx.inputs.keywords[0] if ctx.inputs.keywords else None)
+                 or (clusters.most_common(1)[0][0] if clusters else None)
                  or brand_of(ctx) or site_domain.split(".")[0])
         topic_words = kw_tokens(topic) | {w for r in list(kmap.values())[:10] for w in kw_tokens(r.get("primary_keyword", ""))}
         cands: dict[str, dict] = {}
@@ -87,6 +92,8 @@ class LinkBuilding(CheckModule):
                 return
             rel_words = kw_tokens(f"{title} {snippet}")
             relevance = len(rel_words & topic_words) / max(1, min(len(topic_words), 6))
+            if kind in ("guest_post", "resource") and not relevance:
+                return  # search results that share no topic words with the site are noise (e.g. generic news blogs)
             cands[dom] = {"url": url, "title": title, "snippet": snippet, "kind": kind, "domain": dom,
                           "relevance": round(min(1.0, relevance), 2)}
 
@@ -168,7 +175,7 @@ class LinkBuilding(CheckModule):
         home = ctx.site.homepage
         about = (f"Site: {ctx.site.facts.origin}\nName: {brand_of(ctx) or ''}\n"
                  f"Description: {(home.meta_description if home else '') or ''}\n"
-                 f"Main topics: {', '.join(sorted({r.get('primary_keyword', '') for r in list(ctx.shared.get('keyword_map', {}).values())[:8]}))}")
+                 f"Main topics: {', '.join(sorted({r['primary_keyword'] for r in list(ctx.shared.get('keyword_map', {}).values())[:8] if r.get('primary_keyword')}))}")
         made, errors = 0, []
         for group in chunks(list(enumerate(prospects)), 5):
             lines = [f"{i}. {p['kind']} | {p['domain']} | page: {p['title']} | {p['snippet'][:250]}" for i, p in group]

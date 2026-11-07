@@ -30,6 +30,10 @@ TITLE_CHECKS = ("meta.title_missing", "meta.title_duplicate", "meta.title_too_lo
 DESC_CHECKS = ("meta.description_missing", "meta.description_duplicate", "meta.description_length")
 
 
+# check titles phrased as the desired state, restated as the problem for the AI prompt
+PROBLEM_LABELS = {"meta.keyword_in_title": "Primary keyword missing from title"}
+
+
 class MetaTags(CheckModule):
     key = "meta_tags"
     number = 3
@@ -168,7 +172,7 @@ class MetaTags(CheckModule):
         for r in results:
             if r.status.value in ("FAIL", "WARNING") and r.spec.id in TITLE_CHECKS + DESC_CHECKS:
                 for i in r.items:
-                    problems[i.url].append(r.spec.title)
+                    problems[i.url].append(PROBLEM_LABELS.get(r.spec.id, r.spec.title))
         pages = [p for p in select_pages(ctx.site, ctx.settings.llm.max_pages) if p.url in kmap]
         if not pages:
             return self.not_applicable("meta.intent_alignment", "No mapped pages")

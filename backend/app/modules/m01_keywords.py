@@ -273,7 +273,7 @@ class KeywordResearch(CheckModule):
         if ctx.search is None:
             d_err = "Search provider not configured (add the BRAVE_API_KEY secret)"
         else:
-            from app.providers.search import SearchError
+            from app.providers.search import SearchError, clean_question
             for k, intent in diff_kws:
                 try:
                     diffs.append(await ke.difficulty(k, intent, ctx.search, ctx.settings, country=country, lang=lang))
@@ -307,7 +307,7 @@ class KeywordResearch(CheckModule):
                     ac_err = str(e)
                     break
         for x in diffs:
-            for q in x.questions:
+            for q in filter(None, map(clean_question, x.questions)):  # cached responses may predate cleaning
                 ideas.setdefault(q.lower(), "Brave Search (questions)")
         brand = {w for w in kw_tokens(ctx.inputs.brand or "")}
         vocab = set()
