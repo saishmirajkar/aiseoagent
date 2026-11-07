@@ -10,6 +10,7 @@ from app.modules.base import (
 )
 from app.modules.common import is_utility
 from app.llm.client import BOOL, INT, LLMError, STR, arr, obj
+from app.llm.manual import AwaitingAnswer
 from app.llm.summaries import chunks
 from app.modules.textsim import TfIdf
 from app.sitemodel.types import PageData
@@ -243,6 +244,8 @@ class InternalLinking(CheckModule):
                                           schema=REVIEW_SCHEMA, max_tokens=4000)
             except LLMError as e:
                 err = str(e)
+                if isinstance(e, AwaitingAnswer):
+                    continue  # manual AI mode: queue every batch in one run
                 break
             for row in data.get("links", []):
                 if row.get("id") in group:

@@ -22,6 +22,7 @@ from app.datalayer.backlinks import SOCIAL_HOSTS, registered
 from app.db.models import OutreachProspect
 from app.db.session import session_scope
 from app.llm.client import LLMError, STR, arr, INT, obj
+from app.llm.manual import AwaitingAnswer
 from app.llm.summaries import chunks
 from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Integration, Level, Need, Status,
@@ -175,7 +176,7 @@ class LinkBuilding(CheckModule):
         home = ctx.site.homepage
         about = (f"Site: {ctx.site.facts.origin}\nName: {brand_of(ctx) or ''}\n"
                  f"Description: {(home.meta_description if home else '') or ''}\n"
-                 f"Main topics: {', '.join(sorted({r['primary_keyword'] for r in list(ctx.shared.get('keyword_map', {}).values())[:8] if r.get('primary_keyword')}))}")
+                 f"Main topics: {', '.join(sorted({r['primary_keyword'] for r in ctx.shared.get('keyword_map', {}).values() if r.get('primary_keyword')})[:8])}")
         made, errors = 0, []
         for group in chunks(list(enumerate(prospects)), 5):
             lines = [f"{i}. {p['kind']} | {p['domain']} | page: {p['title']} | {p['snippet'][:250]}" for i, p in group]
@@ -185,6 +186,8 @@ class LinkBuilding(CheckModule):
                                           schema=DRAFT_SCHEMA, max_tokens=4000)
             except LLMError as e:
                 errors.append(str(e))
+                if isinstance(e, AwaitingAnswer):
+                    continue  # manual AI mode: queue every batch in one run
                 break
             for d in data.get("drafts", []):
                 if 0 <= d.get("id", -1) < len(prospects):
