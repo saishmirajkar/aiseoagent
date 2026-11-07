@@ -292,7 +292,10 @@ class ImageSEO(CheckModule):
         usable, skipped = [], []
         for src, uses in sorted(need.items(), key=lambda kv: -len(kv[1])):
             a = assets.get(src)
-            if a is None or a.status != 200 or a.format not in VISION_FORMATS or (a.bytes or 0) > 4_500_000:
+            ext = filename_of(src).rsplit(".", 1)[-1].lower() if "." in filename_of(src) else ""
+            unmeasured_ok = a is None and ext in ("jpg", "jpeg", "png", "gif", "webp")  # beyond the probe cap
+            if not unmeasured_ok and (a is None or a.status != 200 or a.format not in VISION_FORMATS
+                                      or (a.bytes or 0) > 4_500_000):
                 skipped.append(src)
                 continue
             usable.append((src, uses))

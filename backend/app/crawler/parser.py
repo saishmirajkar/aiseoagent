@@ -88,6 +88,8 @@ def _types(item: dict) -> list[str]:
 def parse_page(page: PageData, html: str, scope: SiteScope) -> ShellSignals:
     """Fill ``page`` from HTML. Returns signals used to decide whether to JS-render."""
     tree = LexborHTMLParser(html)
+    for br in tree.css("br"):  # a line break separates words ("We<br>outperform" = "We outperform")
+        br.replace_with(" ")
     url = page.final_url or page.url
     base = url
     for b in tree.css("base[href]"):

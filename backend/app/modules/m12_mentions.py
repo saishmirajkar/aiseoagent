@@ -56,6 +56,9 @@ class BrandMentions(CheckModule):
 
         if disc is None or not disc.queries:
             out.append(self.not_checked("mentions.unlinked", "Backlink discovery did not run"))
+        elif disc.candidates and not disc.pages_checked:
+            out.append(self.not_checked("mentions.unlinked", "None of the candidate pages could be fetched to check "
+                                                             "for mentions"))
         else:
             items = [FindingItem(m.source_url, {"title": m.title, "snippet": m.snippet,
                                                 "source_authority": m.authority if m.authority is not None else "low/unknown"})

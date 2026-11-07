@@ -82,6 +82,9 @@ class BacklinkAnalysis(CheckModule):
             ctx.shared.setdefault("metrics", []).append(("backlinks", "discovery", disc.to_json(), "Brave Search + fetched pages"))
             if not disc.queries:
                 out.append(self.not_checked("bl.discovered", f"Search failed: {disc.errors[0] if disc.errors else 'unknown'}"))
+            elif disc.candidates and not disc.pages_checked:
+                out.append(self.not_checked("bl.discovered", f"None of the {disc.candidates} candidate pages could be "
+                                                             f"fetched to verify links (first error: {disc.errors[0] if disc.errors else 'unknown'})"))
             else:
                 items = [FindingItem(b.source_url, {"links_to": b.target_url, "anchor": b.anchor or "(no text)",
                                                     "rel": ",".join(k for k in ("nofollow", "sponsored", "ugc") if getattr(b, k)) or "follow",

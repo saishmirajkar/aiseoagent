@@ -96,3 +96,8 @@ def test_image_link_text_detection():
     p, _ = parsed(html=html)
     flags = {i.filename: i.link_text_empty for i in p.images}
     assert flags == {"1.png": True, "2.png": False, "3.png": False}
+
+
+def test_br_separates_words():
+    p, _ = parsed(html='<html><body><h1>We<br><span>outperform</span><br>giants.</h1><p>a<br/>b</p></body></html>')
+    assert p.headings == [(1, "We outperform giants.")] and "a b" in p.text

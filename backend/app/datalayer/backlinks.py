@@ -107,19 +107,24 @@ async def discover(target_domain: str, brand: str | None, search: SearchProvider
     async with Fetcher(env().user_agent, HostRateLimiter(cfg.rate_limit_per_sec), timeout=cfg.timeout_s,
                        retries=1, max_bytes=3_000_000) as f:
 
-        async def allowed(url: str) -> bool:
+        async def allowed(url: str) -> str | None:
+            """None when fetching is allowed, else the reason it is not."""
             origin = "{0.scheme}://{0.netloc}".format(urlsplit(url))
             if origin not in robots_cache:
                 rr = await f.fetch(origin + "/robots.txt", max_bytes=256_000, retries=0)
                 robots_cache[origin] = build_robots(origin + "/robots.txt", rr.status,
                                                     rr.text() if rr.status == 200 else "", rr.error)
-            return robots_cache[origin].can_fetch(url, cfg.user_agent_token)
+            rb = robots_cache[origin]
+            if rb.status is None:
+                return f"site unreachable ({rb.error or 'no response'})"
+            return None if rb.can_fetch(url, cfg.user_agent_token) else "blocked by robots.txt"
 
         async def check(url: str, title: str, snippet: str) -> None:
             async with sem:
                 try:
-                    if not await allowed(url):
-                        out.errors.append(f"{url}: blocked by robots.txt")
+                    why = await allowed(url)
+                    if why:
+                        out.errors.append(f"{url}: {why}")
                         return
                     res = await f.fetch(url, html_only=True, retries=0)
                 except Exception as e:  # never let one page break discovery
