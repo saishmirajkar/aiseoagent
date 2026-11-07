@@ -1,0 +1,14 @@
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>{{ f.title }}</b> <span class="muted">({{ f.check_id }} · {{ f.status }}{% if f.status in ['FAIL','WARNING'] %} · {{ f.affected }}{% if f.total %}/{{ f.total }}{% endif %} affected · impact {{ f.impact }} · effort {{ f.effort }}{% endif %})</span></p>
+{% if f.reason %}<p><b>Not measured:</b> {{ f.reason }}</p>{% endif %}
+{% if f.summary %}<p>{{ f.summary }}</p>{% endif %}
+{% if f.status in ['FAIL','WARNING'] %}<p><b>Why:</b> {{ f.why }}<br><b>Fix:</b> {{ f.fix }}</p>{% endif %}
+{% if f.generated_fix %}<div class="muted">Ready-made fix</div><pre>{{ f.generated_fix|fix_code }}</pre>{% endif %}
+{% if f['items'] %}
+<div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+{% for it in f['items'][:50] %}<tr><td class="url">{{ it.url or '—' }}</td><td>{{ it.evidence|evidence }}</td><td>{% if it.generated_fix %}<pre>{{ it.generated_fix|fix_code }}</pre>{% endif %}</td></tr>{% endfor %}
+</tbody></table></div>
+{% if f['items']|length > 50 or f.items_truncated %}<p class="muted">Showing 50 of {{ f['items']|length + f.items_truncated }}. See the CSV/JSON export for all.</p>{% endif %}
+{% endif %}
+{% if f.sources %}<div class="muted">Source: {{ f.sources|join(', ') }}</div>{% endif %}
+</div></details>

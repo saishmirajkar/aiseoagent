@@ -47,7 +47,13 @@ URL ─► Crawler (once) ─► Site Model ─► check modules ─► scoring 
   `SELECT … FOR UPDATE SKIP LOCKED`, heartbeats, retry with backoff, and stale-job recovery.
   The worker runs one audit at a time. APScheduler runs maintenance tasks in the worker.
 * **Reports** (`backend/app/reports/`): standalone HTML, CSV (one row per affected URL) and full
-  JSON, stored in Replit Object Storage (Postgres fallback).
+  JSON, stored in Replit Object Storage (Postgres fallback). Reports and the dashboard are written
+  for non-technical readers: each module is presented as an **agent** (Keyword Agent, Speed Agent,
+  Website Health Agent, …) with a one-line job description, and every check has a plain-language
+  title, "what we found", "why it matters", "what to do" and "who can do it"
+  (`backend/app/reports/plain.py`). The original technical detail, evidence tables and ready-made
+  fixes sit under "Technical details for your web developer". Reports are rendered fresh from the
+  database on each download, so older audits pick up wording changes.
 
 The full list of checks is in [docs/CHECKS.md](docs/CHECKS.md). An example report produced from
 the bundled test site is in [docs/example-report.html](docs/example-report.html) and

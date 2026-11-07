@@ -57,6 +57,27 @@ export interface Finding {
   items_truncated: number;
   generated_fix: any;
   sources: string[];
+  agent?: string;
+  agent_icon?: string;
+  plain_title?: string;
+  plain_status?: string;
+  plain_icon?: string;
+  plain_found?: string;
+  plain_why?: string;
+  plain_do?: string;
+  plain_who?: string;
+}
+
+export interface Agent {
+  key: string;
+  name: string;
+  icon: string;
+  job: string;
+  who: string;
+  verdict: string;
+  tone: string;
+  planned: boolean;
+  counts: Record<string, number>;
 }
 
 export const CATEGORY_LABELS: Record<string, string> = {

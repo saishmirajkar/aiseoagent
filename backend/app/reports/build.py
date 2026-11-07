@@ -17,12 +17,14 @@ from app import __version__
 from app.db.models import Audit, Finding, Metric, ModuleRun, Page, Site, SiteFacts
 from app.modules.base import CATEGORY_LABELS
 from app.modules.registry import all_modules
+from app.reports.plain import agent_summaries, counts_sentence, grade, plain_fields
 
 TEMPLATES = Path(__file__).parent / "templates"
 STATUS_ORDER = {"FAIL": 0, "WARNING": 1, "NOT_CHECKED": 2, "PASS": 3, "N/A": 4}
 
 
 _MODULE_NAMES: dict[str, str] = {}
+_POPULATION: dict[str, str | None] = {}
 
 
 def module_name(key: str) -> str:
@@ -31,7 +33,23 @@ def module_name(key: str) -> str:
     return _MODULE_NAMES.get(key, key)
 
 
+def population(check_id: str) -> str | None:
+    if not _POPULATION:
+        _POPULATION.update({c.id: c.population for m in all_modules() for c in m.checks})
+    return _POPULATION.get(check_id)
+
+
+def module_order() -> list[str]:
+    return [m.key for m in sorted(all_modules(), key=lambda m: m.number)]
+
+
 def finding_dict(f: Finding) -> dict[str, Any]:
+    d = _finding_dict(f)
+    d.update(plain_fields(d, population(f.check_id)))
+    return d
+
+
+def _finding_dict(f: Finding) -> dict[str, Any]:
     return {
         "id": f.id, "module": f.module, "module_name": module_name(f.module),
         "module_number": f.module_number, "check_id": f.check_id,
@@ -80,6 +98,8 @@ def build_report_data(db: Session, audit_id: int) -> dict[str, Any]:
     counts: dict[str, int] = {}
     for x in findings:
         counts[x.status] = counts.get(x.status, 0) + 1
+    all_dicts = [d for lst in by_cat.values() for d in lst]
+    overall = (audit.scores or {}).get("overall")
     return {
         "generator": f"SEO Inspector {__version__}",
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -93,6 +113,9 @@ def build_report_data(db: Session, audit_id: int) -> dict[str, Any]:
         "coverage": audit.coverage, "status_counts": counts,
         "category_labels": CATEGORY_LABELS,
         "top_fixes": [finding_dict(x) for x in top_fixes(findings)],
+        "plain": {"grade": grade(overall), "counts_sentence": counts_sentence(counts),
+                  "pages_checked": (f.get("crawl") or {}).get("pages_fetched")},
+        "agents": agent_summaries(all_dicts, module_order()),
         "missing": missing_summary(findings),
         "findings_by_category": by_cat,
         "not_checked": [finding_dict(x) for x in findings if x.status == "NOT_CHECKED"],
@@ -153,7 +176,8 @@ def render_json(data: dict[str, Any]) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False, default=str)
 
 
-CSV_COLUMNS = ["audit_id", "category", "module", "check_id", "title", "status", "impact", "effort", "priority",
+CSV_COLUMNS = ["audit_id", "agent", "in_plain_words", "result", "what_to_do", "category", "module", "check_id", "title",
+               "status", "impact", "effort", "priority",
                "url", "evidence", "generated_fix", "why", "fix", "reason", "sources"]
 
 
@@ -164,8 +188,8 @@ def render_csv(data: dict[str, Any]) -> str:
     aid = data["audit"]["id"]
     for cat, lst in data["findings_by_category"].items():
         for f in lst:
-            base = [aid, cat, f["module"], f["check_id"], f["title"], f["status"], f["impact"], f["effort"],
-                    f["priority"]]
+            base = [aid, f["agent"], f["plain_title"], f["plain_status"], f["plain_do"], cat, f["module"],
+                    f["check_id"], f["title"], f["status"], f["impact"], f["effort"], f["priority"]]
             tail = [f["why"], f["fix"], f["reason"], "; ".join(f["sources"] or [])]
             items = f["items"] if f["status"] in ("FAIL", "WARNING") and f["items"] else [None]
             for it in items:

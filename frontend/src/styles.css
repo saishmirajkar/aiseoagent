@@ -89,3 +89,29 @@ pre.text { max-height: 300px; overflow: auto; }
 .dot.on { background: var(--pass); }
 .outline { list-style: none; padding: 0; }
 .sticky-save { position: sticky; bottom: 0; background: var(--bg); padding: 12px 0; }
+
+/* plain-language summary & agents */
+.hero { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+.big { font-size: 48px; font-weight: 700; line-height: 1; }
+.big small { font-size: 18px; color: var(--muted); font-weight: 500; }
+.grade { font-size: 19px; font-weight: 650; margin-bottom: 2px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 8px; font-size: 12px; color: var(--muted); }
+.agents { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.agents .card { margin: 0; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.agent { border-left: 4px solid var(--nc); }
+.t-FAIL { border-left-color: var(--fail); } .t-WARNING { border-left-color: var(--warn); } .t-PASS { border-left-color: var(--pass); }
+.aicon { margin-right: 6px; } .big-icon { font-size: 24px; }
+.pill { display: inline-block; font-size: 12px; font-weight: 600; padding: 1px 9px; border-radius: 999px; color: var(--nc);
+  background: color-mix(in srgb, currentColor 12%, transparent); }
+.p-FAIL { color: var(--fail); } .p-WARNING { color: var(--warn); } .p-PASS { color: var(--pass); }
+ol.fixes { padding-left: 22px; } ol.fixes li { margin: 0 0 10px; }
+.kv { display: flex; gap: 10px; margin-top: 4px; } .kv > b { flex: 0 0 120px; }
+@media (max-width: 600px) { .kv { flex-direction: column; gap: 0; } .kv > b { flex: none; } }
+.agent-section { margin-top: 24px; padding-top: 8px; border-top: 1px solid var(--line); }
+.fbody.tech { border-left: 3px solid var(--line); margin-left: 4px; }
+.finding > .fbody:first-child { padding-top: 10px; }
+.finding > button.link { margin: 0 12px 10px; }
+@media (max-width: 520px) {
+  .top .wrap { height: auto; padding-top: 8px; padding-bottom: 8px; flex-wrap: wrap; gap: 4px 12px; }
+  nav { gap: 12px; flex-wrap: wrap; }
+}

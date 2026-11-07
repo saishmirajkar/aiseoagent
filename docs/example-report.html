@@ -3,573 +3,1091 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SEO audit – 127.0.0.1</title>
+<title>Website check-up – 127.0.0.1-58769</title>
 <style>
-:root{--bg:#fff;--fg:#1d2330;--muted:#5d6678;--line:#e3e6ec;--card:#f7f8fa;--fail:#c62828;--warn:#b26a00;--pass:#2e7d32;--nc:#6b7280;--accent:#2f5bd3}
-@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#e6e9ef;--muted:#9aa3b2;--line:#2a2f3a;--card:#1a1e26;--fail:#ef5350;--warn:#ffb74d;--pass:#66bb6a;--nc:#9aa3b2;--accent:#7aa2ff}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-.wrap{max-width:1100px;margin:0 auto;padding:24px 16px 64px}
-h1{font-size:24px;margin:0 0 4px}h2{font-size:19px;margin:36px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}h3{font-size:16px;margin:24px 0 8px}
-.muted{color:var(--muted)}.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
-.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px}
-.score{font-size:28px;font-weight:650}.label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
-.badge{display:inline-block;font-size:11px;font-weight:600;padding:1px 7px;border-radius:10px;border:1px solid currentColor;white-space:nowrap}
-.FAIL{color:var(--fail)}.WARNING{color:var(--warn)}.PASS{color:var(--pass)}.NOT_CHECKED,.NA{color:var(--nc)}
-table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{font-weight:600;color:var(--muted);font-size:12px}td.url{word-break:break-all;max-width:340px}
-details{border:1px solid var(--line);border-radius:8px;margin:8px 0;background:var(--card)}summary{cursor:pointer;padding:10px 12px;list-style:none;display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
-summary::-webkit-details-marker{display:none}.body{padding:0 12px 12px}
-pre{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px;overflow:auto;font-size:12px;white-space:pre-wrap;word-break:break-all;margin:6px 0}
-ul.missing{columns:2;padding-left:18px}@media(max-width:640px){ul.missing{columns:1}}
-.src{font-size:11px;color:var(--muted)}
-@media print{details{break-inside:avoid}details:not([open]) .body{display:block}}
+:root{--bg:#fff;--fg:#1d2330;--muted:#5d6678;--line:#e3e6ec;--card:#f7f8fa;--fail:#c62828;--warn:#b26a00;--pass:#2e7d32;--nc:#6b7280;--accent:#2f5bd3;
+--fail-bg:#fdecec;--warn-bg:#fff4e0;--pass-bg:#e9f5ea;--nc-bg:#eef0f3}
+@media (prefers-color-scheme:dark){:root{--bg:#12151b;--fg:#e6e9ef;--muted:#9aa3b2;--line:#2a2f3a;--card:#1a1e26;--fail:#ef5350;--warn:#ffb74d;--pass:#66bb6a;--nc:#9aa3b2;--accent:#7aa2ff;
+--fail-bg:#3a1f22;--warn-bg:#3a2e17;--pass-bg:#1d3320;--nc-bg:#23272f}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:21px;margin:40px 0 6px}h3{font-size:17px;margin:0}
+.lead{color:var(--muted);margin:0 0 16px}.muted{color:var(--muted)}.small{font-size:13px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.hero{display:flex;gap:24px;align-items:center;flex-wrap:wrap}
+.big{font-size:56px;font-weight:700;line-height:1}.big small{font-size:20px;color:var(--muted);font-weight:500}
+.grade{font-size:20px;font-weight:650;margin-bottom:4px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:12px;font-size:13px;color:var(--muted)}
+.agents{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+.agent{display:block;text-decoration:none;color:inherit;border-left:4px solid var(--nc)}
+.agent .icon{font-size:22px;margin-right:6px}.agent p{margin:6px 0;font-size:13px;color:var(--muted)}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;background:var(--nc-bg);color:var(--nc)}
+.t-FAIL{border-left-color:var(--fail)}.t-WARNING{border-left-color:var(--warn)}.t-PASS{border-left-color:var(--pass)}
+.p-FAIL{background:var(--fail-bg);color:var(--fail)}.p-WARNING{background:var(--warn-bg);color:var(--warn)}.p-PASS{background:var(--pass-bg);color:var(--pass)}
+ol.fixes{list-style:none;padding:0;margin:0;counter-reset:n}
+ol.fixes>li{counter-increment:n;position:relative;padding-left:44px;margin-bottom:12px}
+ol.fixes>li::before{content:counter(n);position:absolute;left:0;top:14px;width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center}
+.issue{margin-bottom:10px}.issue h3{margin-bottom:4px}
+.kv{margin:6px 0 0}.kv b{display:inline-block;min-width:118px}
+.who{font-size:13px;color:var(--muted);margin-top:6px}
+.section{margin-top:28px;padding-top:8px;border-top:1px solid var(--line)}
+.section-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin:10px 0}
+.section-head .icon{font-size:26px}
+ul.simple{list-style:none;padding:0;margin:8px 0}ul.simple li{padding:4px 0;border-bottom:1px dashed var(--line)}
+details.tech{margin-top:10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+details.tech>summary{cursor:pointer;padding:8px 12px;font-size:13px;color:var(--accent)}
+details.tech .body{padding:0 12px 12px;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}th,td{text-align:left;padding:5px 7px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-weight:600;color:var(--muted)}td.url{word-break:break-all;max-width:300px}
+pre{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:8px;overflow:auto;font-size:12px;white-space:pre-wrap;word-break:break-word;margin:6px 0}
+.scroll{overflow-x:auto}
+dl.glossary dt{font-weight:650;margin-top:8px}dl.glossary dd{margin:0 0 0 0;color:var(--muted)}
+@media print{details.tech{display:none}.agent{break-inside:avoid}.issue{break-inside:avoid}}
 </style>
 </head>
 <body><div class="wrap">
-<h1>SEO audit: 127.0.0.1</h1>
-<div class="muted">http://127.0.0.1:8765/ · audit #2 · 2026-11-05T19:17:36+00:00 · SEO Inspector 0.1.0</div>
 
-<h2>Scores</h2>
-<div class="grid">
-  <div class="card"><div class="label">Overall</div><div class="score">75.4</div></div>
-  <div class="card"><div class="label">Coverage</div><div class="score">32.5%</div><div class="src">share of the audit actually measured</div></div>
-  <div class="card"><div class="label">Technical</div>
-    <div class="score">75.2</div>
-    <div class="src">coverage 89.6% · weight 25.0 (eff. 45.5%)</div></div>
-  <div class="card"><div class="label">On-page</div>
-    <div class="score">75.5</div>
-    <div class="src">coverage 33.6% · weight 30.0 (eff. 54.5%)</div></div>
-  <div class="card"><div class="label">Performance</div>
-    <div class="score">–</div>
-    <div class="src">coverage 0.0% · weight 15.0</div></div>
-  <div class="card"><div class="label">Schema</div>
-    <div class="score">–</div>
-    <div class="src">coverage 0.0% · weight 5.0</div></div>
-  <div class="card"><div class="label">Off-page</div>
-    <div class="score">–</div>
-    <div class="src">coverage 0.0% · weight 10.0</div></div>
-  <div class="card"><div class="label">Local</div>
-    <div class="score">–</div>
-    <div class="src">coverage 0.0% · weight 5.0</div></div>
-  <div class="card"><div class="label">AI Search &amp; GEO</div>
-    <div class="score">–</div>
-    <div class="src">coverage 0.0% · weight 10.0</div></div>
+<h1>Website check-up: 127.0.0.1-58769</h1>
+<p class="lead">http://127.0.0.1:58769/ · 2026-11-07 · our agents visited 13 pages</p>
+
+<div class="card">
+  <div class="hero">
+    <div class="big">74.4<small> / 100</small></div>
+    <div>
+      <div class="grade">Needs work</div>
+      <div>Your website has a number of problems that make it harder to find on Google.</div>
+      <div class="muted small">Our agents ran 112 checks: 30 look good, 15 need fixing, 29 could be better, 33 couldn&#39;t be checked yet. We could test 53.9% of what we look at; the rest needs extra access (explained below).</div>
+    </div>
+  </div>
+  <div class="legend"><span>🔴 Needs fixing</span><span>🟠 Could be better</span><span>🟢 Looks good</span><span>⚪ Couldn't check or doesn't apply</span></div>
+  <p class="muted small" style="margin:8px 0 0">The score is like a health check: it shows how many of our checks your site passed, weighted by how much each one matters. It is not your position in Google.</p>
 </div>
-<p class="muted">Scores use only measured checks. NOT_CHECKED items are excluded and lower the coverage instead.
-Status counts: <span class="badge NOT_CHECKED">NOT_CHECKED 18</span> <span class="badge PASS">PASS 18</span> <span class="badge FAIL">FAIL 13</span> <span class="badge WARNING">WARNING 20</span> <span class="badge NA">N/A 1</span> </p>
 
-<h2>Missing on this site</h2>
-<ul class="missing"><li>Meta descriptions missing on 1 page(s)</li><li>Open Graph tags missing on 7 page(s)</li><li>Alt text missing on 1 image(s)</li><li>Canonical tag missing on 4 page(s)</li><li>Viewport meta tag missing on 1 page(s)</li><li>html lang attribute missing on 1 page(s)</li></ul>
-<h2>Top 10 fixes</h2>
-<table><thead><tr><th>#</th><th>Issue</th><th>Status</th><th>Affected</th><th>Impact</th><th>Effort</th></tr></thead><tbody>
-<tr><td>1</td><td><b>Pages returning 4xx errors</b><br><span class="muted">Internal URLs return client errors</span><br>Restore the page, 301-redirect it to the closest live page, or remove the links pointing to it.</td>
-<td><span class="badge FAIL">FAIL</span></td><td>2 / 15</td><td>High</td><td>Low</td></tr>
-<tr><td>2</td><td><b>Broken internal links</b><br><span class="muted">1 broken internal link(s) on 1 page(s)</span><br>Update each link to point at a live URL (or remove it).</td>
-<td><span class="badge FAIL">FAIL</span></td><td>1 / 10</td><td>High</td><td>Low</td></tr>
-<tr><td>3</td><td><b>Canonical points to a non-200 URL</b><br><span class="muted">Canonical tags point at URLs that do not return 200</span><br>Point the canonical at the live, final (200) version of the page.</td>
-<td><span class="badge FAIL">FAIL</span></td><td>1 / 10</td><td>High</td><td>Low</td></tr>
-<tr><td>4</td><td><b>Noindex on important pages</b><br><span class="muted">Important pages are set to noindex</span><br>Remove the noindex directive (meta robots or X-Robots-Tag) if the page should rank.</td>
-<td><span class="badge FAIL">FAIL</span></td><td>1 / 10</td><td>High</td><td>Low</td></tr>
-<tr><td>5</td><td><b>Redirect loops</b><br><span class="muted">Redirect loops found</span><br>Fix the redirect rules so the URL resolves to a 200 page.</td>
-<td><span class="badge FAIL">FAIL</span></td><td>1 / 14</td><td>High</td><td>Low</td></tr>
-<tr><td>6</td><td><b>Missing or incorrect viewport meta tag</b><br><span class="muted">Pages lack a responsive viewport</span><br>Add &lt;meta name=&#34;viewport&#34; content=&#34;width=device-width, initial-scale=1&#34;&gt;.</td>
-<td><span class="badge FAIL">FAIL</span></td><td>1 / 10</td><td>High</td><td>Low</td></tr>
-<tr><td>7</td><td><b>Sitemap lists non-200 URLs</b><br><span class="muted">2 sitemap URL(s) do not return 200 directly</span><br>List only final, 200-status URLs.</td>
-<td><span class="badge FAIL">FAIL</span></td><td>2 / 7</td><td>Med</td><td>Low</td></tr>
-<tr><td>8</td><td><b>Images missing alt attribute</b><br><span class="muted">Images with no alt attribute</span><br>Add descriptive alt text (what the image shows, in context).</td>
-<td><span class="badge FAIL">FAIL</span></td><td>1 / 8</td><td>Med</td><td>Low</td></tr>
-<tr><td>9</td><td><b>Missing meta description</b><br><span class="muted">Pages without a meta description</span><br>Write a unique 120–160 character description that summarises the page and invites the click.</td>
-<td><span class="badge FAIL">FAIL</span></td><td>1 / 9</td><td>Med</td><td>Low</td></tr>
-<tr><td>10</td><td><b>Images without width/height attributes</b><br><span class="muted">Images without explicit width and height</span><br>Add width and height attributes matching the image&#39;s aspect ratio.</td>
-<td><span class="badge WARNING">WARNING</span></td><td>6 / 8</td><td>Med</td><td>Low</td></tr>
-</tbody></table>
+<h2>Meet your agents</h2>
+<p class="lead">Each agent checks one part of your website. Click an agent to see what it found.</p>
+<div class="agents">
+  <a class="card agent t-NOT_CHECKED" href="#agent-keywords">
+    <h3><span class="icon">🔑</span>Keyword Agent</h3>
+    <p>Finds the words your customers type into Google and checks that each page is aimed at the right ones.</p>
+    <span class="pill p-NOT_CHECKED">Couldn&#39;t check this time</span>
+  </a>
+  <a class="card agent t-FAIL" href="#agent-content">
+    <h3><span class="icon">📝</span>Content Agent</h3>
+    <p>Reads your pages like a visitor would and checks they are useful, original and easy to read.</p>
+    <span class="pill p-FAIL">1 thing to fix, 1 to improve</span>
+  </a>
+  <a class="card agent t-FAIL" href="#agent-meta_tags">
+    <h3><span class="icon">🔎</span>Search Listing Agent</h3>
+    <p>Checks the headline and short description Google shows for each of your pages in search results.</p>
+    <span class="pill p-FAIL">2 things to fix, 5 to improve</span>
+  </a>
+  <a class="card agent t-FAIL" href="#agent-internal_links">
+    <h3><span class="icon">🧭</span>Navigation Agent</h3>
+    <p>Checks that your pages link to each other, so visitors and Google can find everything.</p>
+    <span class="pill p-FAIL">1 thing to fix, 2 to improve</span>
+  </a>
+  <a class="card agent t-FAIL" href="#agent-images">
+    <h3><span class="icon">🖼️</span>Image Agent</h3>
+    <p>Checks that your pictures load quickly and have descriptions Google and blind visitors can understand.</p>
+    <span class="pill p-FAIL">2 things to fix, 6 to improve</span>
+  </a>
+  <a class="card agent t-FAIL" href="#agent-technical">
+    <h3><span class="icon">🩺</span>Website Health Agent</h3>
+    <p>Looks for broken pages, dead links, security warnings and other faults that put visitors and Google off.</p>
+    <span class="pill p-FAIL">8 things to fix, 6 to improve</span>
+  </a>
+  <a class="card agent t-FAIL" href="#agent-indexing">
+    <h3><span class="icon">🚪</span>Google Access Agent</h3>
+    <p>Checks that Google is allowed into your site and has a complete list of your pages.</p>
+    <span class="pill p-FAIL">1 thing to fix, 3 to improve</span>
+  </a>
+  <a class="card agent t-NOT_CHECKED" href="#agent-performance">
+    <h3><span class="icon">⚡</span>Speed Agent</h3>
+    <p>Measures how fast your site loads and responds, especially on mobile phones.</p>
+    <span class="pill p-NOT_CHECKED">Couldn&#39;t check this time</span>
+  </a>
+  <a class="card agent t-WARNING" href="#agent-schema">
+    <h3><span class="icon">🏷️</span>Google Labels Agent</h3>
+    <p>Checks for hidden labels that tell Google what each page is: your company, a product, an article or a video.</p>
+    <span class="pill p-WARNING">1 thing to improve</span>
+  </a>
+  <a class="card agent t-NOT_CHECKED" href="#agent-backlinks">
+    <h3><span class="icon">🔗</span>Link Votes Agent</h3>
+    <p>Finds other websites that link to you. Google treats each of these links as a vote of trust.</p>
+    <span class="pill p-NOT_CHECKED">Couldn&#39;t check this time</span>
+  </a>
+  <a class="card agent t-NOT_CHECKED" href="#agent-outreach">
+    <h3><span class="icon">✉️</span>Outreach Agent</h3>
+    <p>Finds websites that might link to you and drafts emails you can send. Nothing is ever sent automatically.</p>
+    <span class="pill p-NOT_CHECKED">Couldn&#39;t check this time</span>
+  </a>
+  <a class="card agent t-NOT_CHECKED" href="#agent-brand_mentions">
+    <h3><span class="icon">📣</span>Reputation Agent</h3>
+    <p>Looks for where your business is talked about online and what people say about it.</p>
+    <span class="pill p-NOT_CHECKED">Couldn&#39;t check this time</span>
+  </a>
+  <a class="card agent t-NA" href="#agent-gbp">
+    <h3><span class="icon">📍</span>Google Maps Agent</h3>
+    <p>Will check your Google Business Profile, the listing people see on Google Maps.</p>
+    <span class="pill p-NA">Coming in a later update</span>
+  </a>
+  <a class="card agent t-NA" href="#agent-citations">
+    <h3><span class="icon">📒</span>Directory Listings Agent</h3>
+    <p>Will check that your name, address and phone number are the same on every online directory.</p>
+    <span class="pill p-NA">Coming in a later update</span>
+  </a>
+  <a class="card agent t-NA" href="#agent-reviews">
+    <h3><span class="icon">⭐</span>Reviews Agent</h3>
+    <p>Will track your customer reviews and help you reply to them.</p>
+    <span class="pill p-NA">Coming in a later update</span>
+  </a>
+  <a class="card agent t-WARNING" href="#agent-ai_visibility">
+    <h3><span class="icon">🤖</span>AI Assistant Agent</h3>
+    <p>Checks whether ChatGPT, Claude and other AI assistants can read your site and recommend you.</p>
+    <span class="pill p-WARNING">2 things to improve</span>
+  </a>
+  <a class="card agent t-WARNING" href="#agent-geo_content">
+    <h3><span class="icon">💬</span>AI Answers Agent</h3>
+    <p>Checks that your pages are written so AI assistants can easily quote them in their answers.</p>
+    <span class="pill p-WARNING">3 things to improve</span>
+  </a>
+</div>
 
-<h2>All findings</h2>
-<h3>Technical</h3>
-<details open>
-<summary><span class="badge FAIL">FAIL</span><b>Pages returning 4xx errors</b>
-<span class="muted">6. Technical Audit · 2/15 affected · impact High · effort Low</span></summary>
-<div class="body">
-<p>Internal URLs return client errors</p><p><b>Why it matters:</b> Search engines drop 4xx URLs from the index, and visitors who land on them leave.<br><b>Fix:</b> Restore the page, 301-redirect it to the closest live page, or remove the links pointing to it.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/missing</td><td>status: 404; in_sitemap: False; linked_from: [http://127.0.0.1:8765/]</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/gone</td><td>status: 404; in_sitemap: True</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details open>
-<summary><span class="badge FAIL">FAIL</span><b>Broken internal links</b>
-<span class="muted">6. Technical Audit · 1/10 affected · impact High · effort Low</span></summary>
-<div class="body">
-<p>1 broken internal link(s) on 1 page(s)</p><p><b>Why it matters:</b> Broken links waste crawl budget, leak link equity and frustrate visitors.<br><b>Fix:</b> Update each link to point at a live URL (or remove it).</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>count: 1; broken_links: [{link: http://127.0.0.1:8765/missing, status: 404}]</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details open>
-<summary><span class="badge FAIL">FAIL</span><b>Redirect loops</b>
-<span class="muted">6. Technical Audit · 1/14 affected · impact High · effort Low</span></summary>
-<div class="body">
-<p>Redirect loops found</p><p><b>Why it matters:</b> A loop makes the URL unreachable for users and search engines.<br><b>Fix:</b> Fix the redirect rules so the URL resolves to a 200 page.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/loop-a</td><td>chain: [{url: http://127.0.0.1:8765/loop-a, status: 301, location: http://127.0.0.1:8765/loop-b}, {url: http://127.0.0.1:8765/loop-b, status: 301, location: http://127.0.0.1:8765/loop-a}]</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details open>
-<summary><span class="badge FAIL">FAIL</span><b>Canonical points to a non-200 URL</b>
-<span class="muted">6. Technical Audit · 1/10 affected · impact High · effort Low</span></summary>
-<div class="body">
-<p>Canonical tags point at URLs that do not return 200</p><p><b>Why it matters:</b> A canonical to an error or redirect is ignored and confuses indexing.<br><b>Fix:</b> Point the canonical at the live, final (200) version of the page.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/team</td><td>canonical: http://127.0.0.1:8765/missing; canonical_status: 404; canonical_redirects: 0</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:8765/team&#34;&gt;</pre></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details open>
-<summary><span class="badge FAIL">FAIL</span><b>Noindex on important pages</b>
-<span class="muted">6. Technical Audit · 1/10 affected · impact High · effort Low</span></summary>
-<div class="body">
-<p>Important pages are set to noindex</p><p><b>Why it matters:</b> Important pages with noindex cannot appear in search results.<br><b>Fix:</b> Remove the noindex directive (meta robots or X-Robots-Tag) if the page should rank.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/noindex-page</td><td>depth: 1; inlinks: 1; in_sitemap: True; meta_robots: noindex, follow</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details open>
-<summary><span class="badge FAIL">FAIL</span><b>Missing or incorrect viewport meta tag</b>
-<span class="muted">6. Technical Audit · 1/10 affected · impact High · effort Low</span></summary>
-<div class="body">
-<p>Pages lack a responsive viewport</p><p><b>Why it matters:</b> Without a responsive viewport the page fails mobile-friendliness (mobile-first indexing).<br><b>Fix:</b> Add &lt;meta name=&#34;viewport&#34; content=&#34;width=device-width, initial-scale=1&#34;&gt;.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/about</td><td>viewport: (missing)</td><td><pre>&lt;meta name=&#34;viewport&#34; content=&#34;width=device-width, initial-scale=1&#34;&gt;</pre></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details open>
-<summary><span class="badge FAIL">FAIL</span><b>HTTPS and HTTP→HTTPS redirect</b>
-<span class="muted">6. Technical Audit · 1 affected · impact High · effort Med</span></summary>
-<div class="body">
-<p>Site is served over plain HTTP</p><p><b>Why it matters:</b> HTTPS is a ranking signal and browsers flag HTTP pages as &#39;Not secure&#39;.<br><b>Fix:</b> Serve the site over HTTPS and 301-redirect every HTTP URL to its HTTPS version.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>https_probe: {error: ConnectError: [SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1035), final_url: https://127.0.0.1:8765/}; https_available: False</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details open>
-<summary><span class="badge FAIL">FAIL</span><b>Hreflang errors</b>
-<span class="muted">6. Technical Audit · 1/1 affected · impact Med · effort Med</span></summary>
-<div class="body">
-<p>Hreflang annotations have errors</p><p><b>Why it matters:</b> Invalid hreflang annotations are ignored, so the wrong language version may rank.<br><b>Fix:</b> Use valid ISO codes, include a self-reference, make every alternate link back, and point only at 200 canonical URLs.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>problems: [{problem: No x-default alternate (recommended), severity: info}, {href: http://127.0.0.1:8765/de/, status: 404, problem: Alternate URL does not return 200, redirects: 0}]</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Redirect chains (more than one hop)</b>
-<span class="muted">6. Technical Audit · 1/1 affected · impact Med · effort Low</span></summary>
-<div class="body">
-<p>1 URL(s) redirect through 2+ hops</p><p><b>Why it matters:</b> Each extra hop slows users and crawlers; long chains may not be followed.<br><b>Fix:</b> Point the first URL straight at the final destination with a single 301.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/old-page</td><td>hops: 2; chain: [{url: http://127.0.0.1:8765/old-page, status: 301, location: http://127.0.0.1:8765/old-page-2}, {url: http://127.0.0.1:8765/old-page-2, status: 301, location: http://127.0.0.1:8765/new-page}]; final_url: http://127.0.0.1:8765/new-page</td><td><pre># Apache
-Redirect 301 /old-page http://127.0.0.1:8765/new-page
-# Nginx
-location = /old-page { return 301 http://127.0.0.1:8765/new-page; }</pre></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Broken external links</b>
-<span class="muted">6. Technical Audit · 1/2 affected · impact Low · effort Low</span></summary>
-<div class="body">
-<p>1 external link(s) return errors</p><p><b>Why it matters:</b> Links to dead external pages hurt user trust and perceived page quality.<br><b>Fix:</b> Replace with a working source or remove the link.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>link: http://localhost:8766/dead; status: 404; linked_from: [http://127.0.0.1:8765/]</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Internal links pointing to redirects</b>
-<span class="muted">6. Technical Audit · 1/10 affected · impact Low · effort Low</span></summary>
-<div class="body">
-<p>1 internal link(s) point at redirecting URLs</p><p><b>Why it matters:</b> Linking to redirecting URLs adds latency and dilutes signals.<br><b>Fix:</b> Update internal links to the final destination URL.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>count: 1; links: [{link: http://127.0.0.1:8765/old-page, redirects_to: http://127.0.0.1:8765/new-page}]</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Missing canonical tag</b>
-<span class="muted">6. Technical Audit · 4/9 affected · impact Low · effort Low</span></summary>
-<div class="body">
-<p>4 page(s) have no canonical tag</p><p><b>Why it matters:</b> Without a canonical, search engines guess the preferred URL among duplicates.<br><b>Fix:</b> Add a self-referencing &lt;link rel=&#34;canonical&#34;&gt; to every indexable page.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/js-page</td><td>canonical: (missing)</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:8765/js-page&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/new-page</td><td>canonical: (missing)</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:8765/new-page&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/js-only-target</td><td>canonical: (missing)</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:8765/js-only-target&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/orphan</td><td>canonical: (missing)</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:8765/orphan&#34;&gt;</pre></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Missing html lang attribute</b>
-<span class="muted">6. Technical Audit · 1/10 affected · impact Low · effort Low</span></summary>
-<div class="body">
-<p>Pages lack html lang</p><p><b>Why it matters:</b> The lang attribute helps search engines and screen readers identify the language.<br><b>Fix:</b> Add lang to the &lt;html&gt; element, e.g. &lt;html lang=&#34;en&#34;&gt;.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/blog/post-1</td><td>lang: (missing)</td><td><pre>&lt;html lang=&#34;en&#34;&gt;</pre></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Content that only appears after JavaScript</b>
-<span class="muted">6. Technical Audit · 1/2 affected · impact Med · effort High</span></summary>
-<div class="body">
-<p>Main content or links only appear after JavaScript runs</p><p><b>Why it matters:</b> Content and links that need JavaScript are indexed later and less reliably.<br><b>Fix:</b> Server-side render or pre-render primary content and navigation links.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/js-page</td><td>raw_words: 0; rendered_words: 90; raw_internal_links: 0; rendered_internal_links: 1</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl (raw HTML vs headless Chromium render)</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Conflicting canonical signals</b>
-<span class="muted">6. Technical Audit</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Duplicate URL variants (www / trailing slash)</b>
-<span class="muted">6. Technical Audit</span></summary>
-<div class="body">
-<p>URL variants consolidate to one version</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">—</td><td>www: {skipped: IP/localhost host}; trailing_slash: {page: http://127.0.0.1:8765/about, status: 200, variant: http://127.0.0.1:8765/about/, duplicate: False, final_url: http://127.0.0.1:8765/about, redirects: 1, page_canonical: http://127.0.0.1:8765/about}</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Pages returning 5xx server errors</b>
-<span class="muted">6. Technical Audit</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Pages that timed out or failed to load</b>
-<span class="muted">6. Technical Audit</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Slow server response</b>
-<span class="muted">6. Technical Audit</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: Crawl (single request from the audit server; not field data)</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Raw vs rendered HTML disagree on key tags</b>
-<span class="muted">6. Technical Audit</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Meta refresh redirects</b>
-<span class="muted">6. Technical Audit</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge NA">N/A</span><b>Mixed content on HTTPS pages</b>
-<span class="muted">6. Technical Audit</span></summary>
-<div class="body">
-<p><b>Not measured:</b> Site is not served over HTTPS (see HTTPS check)</p></div></details>
-<details open>
-<summary><span class="badge FAIL">FAIL</span><b>Sitemap lists non-200 URLs</b>
-<span class="muted">7. Crawling &amp; Indexing · 2/7 affected · impact Med · effort Low</span></summary>
-<div class="body">
-<p>2 sitemap URL(s) do not return 200 directly</p><p><b>Why it matters:</b> Listing errors and redirects in the sitemap wastes crawl budget and reduces trust in it.<br><b>Fix:</b> List only final, 200-status URLs.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/gone</td><td>status: 404</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/old-page</td><td>status: 301; severity: warning; redirects_to: http://127.0.0.1:8765/new-page</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>robots.txt blocks CSS/JS needed for rendering</b>
-<span class="muted">7. Crawling &amp; Indexing · 1/10 affected · impact Med · effort Low</span></summary>
-<div class="body">
-<p>CSS/JS files are disallowed for Googlebot</p><p><b>Why it matters:</b> Google renders pages; blocked CSS/JS can make pages look broken or empty to it.<br><b>Fix:</b> Allow crawling of CSS and JavaScript files.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>count: 1; blocked_resources: [http://127.0.0.1:8765/assets/blocked.js]</td><td></td></tr></tbody></table>
-<div class="src">Source: robots.txt evaluated as Googlebot</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Sitemap lists noindexed, canonicalised or blocked URLs</b>
-<span class="muted">7. Crawling &amp; Indexing · 1/7 affected · impact Med · effort Low</span></summary>
-<div class="body">
-<p>Sitemap lists URLs that cannot be indexed</p><p><b>Why it matters:</b> Sitemaps should contain only URLs you want indexed; mixed signals confuse search engines.<br><b>Fix:</b> Remove these URLs from the sitemap, or make them indexable.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/noindex-page</td><td>problem: noindex; meta_robots: noindex, follow</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Indexable pages missing from the sitemap</b>
-<span class="muted">7. Crawling &amp; Indexing · 4/8 affected · impact Med · effort Low</span></summary>
-<div class="body">
-<p>Indexable pages are not listed in the sitemap</p><p><b>Why it matters:</b> Pages missing from the sitemap are discovered more slowly.<br><b>Fix:</b> Add every indexable, canonical page to the sitemap.</p><div class="label">Generated fix</div><pre>&lt;url&gt;&lt;loc&gt;http://127.0.0.1:8765/blog/post-1&lt;/loc&gt;&lt;/url&gt;
-&lt;url&gt;&lt;loc&gt;http://127.0.0.1:8765/js-only-target&lt;/loc&gt;&lt;/url&gt;
-&lt;url&gt;&lt;loc&gt;http://127.0.0.1:8765/js-page&lt;/loc&gt;&lt;/url&gt;
-&lt;url&gt;&lt;loc&gt;http://127.0.0.1:8765/new-page&lt;/loc&gt;&lt;/url&gt;</pre><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/blog/post-1</td><td>depth: 1; inlinks: 1</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/js-only-target</td><td>depth: 2; inlinks: 1</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/js-page</td><td>depth: 1; inlinks: 1</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/new-page</td><td>depth: 1; inlinks: 1</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Indexed vs not-indexed pages (Search Console)</b>
-<span class="muted">7. Crawling &amp; Indexing</span></summary>
-<div class="body">
-<p><b>Not measured:</b> Requires Google Search Console access. Setup: create a Google Cloud service account, add its e-mail as a user on the Search Console property, and save the JSON key as the GSC_SERVICE_ACCOUNT_JSON secret.</p></div></details>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>URL Inspection for key pages (Search Console)</b>
-<span class="muted">7. Crawling &amp; Indexing</span></summary>
-<div class="body">
-<p><b>Not measured:</b> Requires Google Search Console access. Setup: create a Google Cloud service account, add its e-mail as a user on the Search Console property, and save the JSON key as the GSC_SERVICE_ACCOUNT_JSON secret.</p></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>robots.txt blocks important URLs</b>
-<span class="muted">7. Crawling &amp; Indexing</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: robots.txt evaluated as Googlebot</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>robots.txt available</b>
-<span class="muted">7. Crawling &amp; Indexing</span></summary>
-<div class="body">
-<p>robots.txt returns 200</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/robots.txt</td><td>size: 139; status: 200</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>XML sitemap present</b>
-<span class="muted">7. Crawling &amp; Indexing</span></summary>
-<div class="body">
-<p>7 URL(s) in 2 sitemap file(s)</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/sitemap.xml</td><td>kind: sitemapindex; source: robots; status: 200; url_count: 1</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/sitemap-pages.xml</td><td>kind: urlset; source: index; status: 200; url_count: 7</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Sitemap files load and parse</b>
-<span class="muted">7. Crawling &amp; Indexing</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>robots.txt references the sitemap</b>
-<span class="muted">7. Crawling &amp; Indexing</span></summary>
-<div class="body">
-<p>1 Sitemap: line(s) found</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">—</td><td>sitemaps: [http://127.0.0.1:8765/sitemap.xml]</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Noindexed pages that receive many internal links</b>
-<span class="muted">7. Crawling &amp; Indexing</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: Crawl</div></div></details>
-<h3>On-page</h3>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Keyword Research &amp; Mapping</b>
-<span class="muted">1. Keyword Research &amp; Mapping</span></summary>
-<div class="body">
-<p><b>Not measured:</b> This module is not built yet (planned for build phase 3)</p></div></details>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Content Optimization</b>
-<span class="muted">2. Content Optimization</span></summary>
-<div class="body">
-<p><b>Not measured:</b> This module is not built yet (planned for build phase 3)</p></div></details>
-<details open>
-<summary><span class="badge FAIL">FAIL</span><b>Missing meta description</b>
-<span class="muted">3. Meta Tags · 1/9 affected · impact Med · effort Low</span></summary>
-<div class="body">
-<p>Pages without a meta description</p><p><b>Why it matters:</b> Without one, search engines pick a snippet, which is often less compelling.<br><b>Fix:</b> Write a unique 120–160 character description that summarises the page and invites the click.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/about</td><td>meta_description: (missing)</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details open>
-<summary><span class="badge FAIL">FAIL</span><b>Duplicate titles</b>
-<span class="muted">3. Meta Tags · 2/8 affected · impact Med · effort Med</span></summary>
-<div class="body">
-<p>1 group(s) of pages share the same title</p><p><b>Why it matters:</b> Identical titles make pages compete with each other and hide what is unique.<br><b>Fix:</b> Give each page a unique title that reflects its specific content.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/about</td><td>title: About Acme Widgets | Acme; group_size: 2; shared_with: [http://127.0.0.1:8765/orphan]</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/orphan</td><td>title: About Acme Widgets | Acme; group_size: 2; shared_with: [http://127.0.0.1:8765/about]</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Title too long (truncated in results)</b>
-<span class="muted">3. Meta Tags · 1/9 affected · impact Low · effort Low</span></summary>
-<div class="body">
-<p>Titles over 60 chars or ~580px</p><p><b>Why it matters:</b> Titles beyond ~60 characters / ~580 px are cut off in search results.<br><b>Fix:</b> Shorten to ~50–60 characters, putting the main keyword first.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/blog/post-1</td><td>chars: 108; title: The Complete and Extremely Detailed Guide to Choosing, Installing and Maintaining Industrial Widgets in 2026; pixels_est: 982</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl, Estimate (pixel width, Arial 20px)</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Title too short</b>
-<span class="muted">3. Meta Tags · 4/9 affected · impact Low · effort Low</span></summary>
-<div class="body">
-<p>Titles under 30 characters</p><p><b>Why it matters:</b> Very short titles waste space that could describe the page and earn clicks.<br><b>Fix:</b> Expand to ~50–60 characters with the main topic and a differentiator.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/about</td><td>chars: 25; title: About Acme Widgets | Acme</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/team</td><td>chars: 25; title: About Acme Widgets | Acme</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/js-page</td><td>chars: 19; title: Widget configurator</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/orphan</td><td>chars: 25; title: About Acme Widgets | Acme</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Duplicate meta descriptions</b>
-<span class="muted">3. Meta Tags · 2/7 affected · impact Med · effort Med</span></summary>
-<div class="body">
-<p>1 group(s) of pages share the same meta description</p><p><b>Why it matters:</b> Duplicate descriptions make results look identical and reduce click-through.<br><b>Fix:</b> Write a unique description for each page.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>group_size: 2; shared_with: [http://127.0.0.1:8765/products]; meta_description: Acme Widgets makes durable, precise widgets for workshops, factories and homes. Browse products, read guides and get support.</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/products</td><td>group_size: 2; shared_with: [http://127.0.0.1:8765/]; meta_description: Acme Widgets makes durable, precise widgets for workshops, factories and homes. Browse products, read guides and get support.</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Meta description too short or too long</b>
-<span class="muted">3. Meta Tags · 6/9 affected · impact Low · effort Low</span></summary>
-<div class="body">
-<p>Descriptions outside 120–160 characters</p><p><b>Why it matters:</b> Descriptions outside ~120–160 characters are truncated or look thin.<br><b>Fix:</b> Aim for 120–160 characters.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/blog/post-1</td><td>chars: 6; problem: too short; meta_description: Short.</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/team</td><td>chars: 98; problem: too short; meta_description: Meet the Acme Widgets team of engineers and designers who build durable widgets for your workshop.</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/js-page</td><td>chars: 99; problem: too short; meta_description: Configure your widget online with the Acme configurator. Pick size, finish and options, then order.</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/new-page</td><td>chars: 91; problem: too short; meta_description: This page is the final destination of a redirect chain used in the SEO Inspector test site.</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/js-only-target</td><td>chars: 84; problem: too short; meta_description: A gallery of widgets configured by Acme customers, with sizes, finishes and options.</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/orphan</td><td>chars: 86; problem: too short; meta_description: An orphan page that is listed in the sitemap but not linked from anywhere on the site.</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Missing Open Graph / Twitter tags</b>
-<span class="muted">3. Meta Tags · 7/8 affected · impact Low · effort Low</span></summary>
-<div class="body">
-<p>Pages missing Open Graph tags</p><p><b>Why it matters:</b> Without og:title/og:description/og:image, shared links render poorly on social and chat apps.<br><b>Fix:</b> Add og:title, og:description, og:image (and twitter:card).</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/about</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;About Acme Widgets | Acme&#34;&gt;
+<h2>Fix these first</h2>
+<p class="lead">The changes that will help the most for the least effort, in order.</p>
+<ol class="fixes">
+  <li><div class="card">
+    <h3>🔴 Pages that show &#39;page not found&#39;</h3>
+    <div class="muted small">🩺 Website Health Agent · Needs fixing</div>
+    <p class="kv"><b>What we found</b> We found 2 pages showing an error such as &#39;page not found&#39; (out of 15 checked).</p>
+    <p class="kv"><b>Why it matters</b> Visitors who land on these leave, and Google removes them from its results.</p>
+    <p class="kv"><b>What to do</b> Fix the pages, or redirect each old address to the best current page.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+  </div></li>
+  <li><div class="card">
+    <h3>🔴 Broken links on your site</h3>
+    <div class="muted small">🩺 Website Health Agent · Needs fixing</div>
+    <p class="kv"><b>What we found</b> We found 1 page with links to pages on your site that don&#39;t work (out of 10 checked).</p>
+    <p class="kv"><b>Why it matters</b> Dead ends frustrate visitors and waste Google&#39;s time.</p>
+    <p class="kv"><b>What to do</b> Update or remove the broken links (the list is in the technical details).</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+  </div></li>
+  <li><div class="card">
+    <h3>🔴 Main-address tags that point to a broken page</h3>
+    <div class="muted small">🩺 Website Health Agent · Needs fixing</div>
+    <p class="kv"><b>What we found</b> We found 1 page pointing Google to a &#39;main address&#39; that doesn&#39;t work (out of 10 checked).</p>
+    <p class="kv"><b>Why it matters</b> Google ignores the instruction and may show the wrong page.</p>
+    <p class="kv"><b>What to do</b> Point the tag at the correct, working address.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+  </div></li>
+  <li><div class="card">
+    <h3>🔴 Important pages hidden from Google</h3>
+    <div class="muted small">🩺 Website Health Agent · Needs fixing</div>
+    <p class="kv"><b>What we found</b> We found 1 page set to stay out of Google even though they look important (out of 10 checked).</p>
+    <p class="kv"><b>Why it matters</b> These pages can never appear in Google results.</p>
+    <p class="kv"><b>What to do</b> Remove the &#39;noindex&#39; setting from these pages.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+  </div></li>
+  <li><div class="card">
+    <h3>🔴 Addresses that forward in a circle</h3>
+    <div class="muted small">🩺 Website Health Agent · Needs fixing</div>
+    <p class="kv"><b>What we found</b> We found 1 page stuck forwarding in a loop (out of 14 checked).</p>
+    <p class="kv"><b>Why it matters</b> These pages can never be opened by anyone.</p>
+    <p class="kv"><b>What to do</b> Ask your developer to fix the forwarding rules.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+  </div></li>
+  <li><div class="card">
+    <h3>🔴 Pages fit on mobile phones</h3>
+    <div class="muted small">🩺 Website Health Agent · Needs fixing</div>
+    <p class="kv"><b>What we found</b> We found 1 page not set up to fit mobile screens (out of 10 checked).</p>
+    <p class="kv"><b>Why it matters</b> Google ranks sites based on the mobile version; pages that don&#39;t fit phones lose out.</p>
+    <p class="kv"><b>What to do</b> Ask your designer to add the mobile &#39;viewport&#39; setting.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+  </div></li>
+  <li><div class="card">
+    <h3>🔴 Page list contains only working pages</h3>
+    <div class="muted small">🚪 Google Access Agent · Needs fixing</div>
+    <p class="kv"><b>What we found</b> We found 2 addresses in your page list not opening properly (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> Listing broken or forwarded addresses makes Google trust your page list less.</p>
+    <p class="kv"><b>What to do</b> Remove broken and forwarded addresses from the sitemap.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+  </div></li>
+  <li><div class="card">
+    <h3>🔴 Images have a description</h3>
+    <div class="muted small">🖼️ Image Agent · Needs fixing</div>
+    <p class="kv"><b>What we found</b> We found 1 image without a text description (alt text) (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> Google can&#39;t see pictures; it reads the description. Blind visitors&#39; screen readers read it aloud too.</p>
+    <p class="kv"><b>What to do</b> Add a short description to each image. Suggestions are in the technical details.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+  </div></li>
+  <li><div class="card">
+    <h3>🔴 Pages nobody can click through to</h3>
+    <div class="muted small">🧭 Navigation Agent · Needs fixing</div>
+    <p class="kv"><b>What we found</b> We found 1 page that no other page links to (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> Like rooms without a door: visitors can&#39;t reach these pages and Google treats them as unimportant.</p>
+    <p class="kv"><b>What to do</b> Link to these pages from related pages, menus or listing pages (for example, make blog cards real links).</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+  </div></li>
+  <li><div class="card">
+    <h3>🔴 Every page has a Google summary</h3>
+    <div class="muted small">🔎 Search Listing Agent · Needs fixing</div>
+    <p class="kv"><b>What we found</b> We found 1 page with no summary for Google (meta description) (out of 9 checked).</p>
+    <p class="kv"><b>Why it matters</b> The summary is the grey text under your headline in Google. Without it Google picks random text from the page.</p>
+    <p class="kv"><b>What to do</b> Write a 1–2 sentence summary per page. Suggestions are in the technical details.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+  </div></li>
+</ol>
+
+<h2>What each agent found</h2>
+<div class="section" id="agent-keywords">
+  <div class="section-head"><span class="icon">🔑</span><h3>Keyword Agent</h3><span class="pill p-NOT_CHECKED">Couldn&#39;t check this time</span></div>
+  <p class="muted" style="margin-top:0">Finds the words your customers type into Google and checks that each page is aimed at the right ones.</p>
+  <ul class="simple">
+    <li>⚪ <b>How often people search for your phrases</b> <span class="muted">· Couldn&#39;t check: Needs the AI assistant to be switched on in Settings.</span>
+</li>
+    <li>⚪ <b>Each page aims at a clear search phrase</b> <span class="muted">· Couldn&#39;t check: Needs the AI assistant to be switched on in Settings.</span>
+</li>
+    <li>⚪ <b>Pages competing for the same search</b> <span class="muted">· Couldn&#39;t check: Needs the AI assistant to be switched on in Settings.</span>
+</li>
+    <li>⚪ <b>A page for each phrase you want to be found for</b> <span class="muted">· Couldn&#39;t check: Needs the AI assistant to be switched on in Settings.</span>
+</li>
+    <li>⚪ <b>How hard it is to rank for your phrases</b> <span class="muted">· Couldn&#39;t check: Needs the AI assistant to be switched on in Settings.</span>
+</li>
+    <li>⚪ <b>Searches you could be found for but aren&#39;t</b> <span class="muted">· Couldn&#39;t check: Needs the AI assistant to be switched on in Settings.</span>
+</li>
+    <li>⚪ <b>Topics your competitors cover and you don&#39;t</b> <span class="muted">· Couldn&#39;t check: Needs the AI assistant to be switched on in Settings.</span>
+</li>
+  </ul>
+</div>
+<div class="section" id="agent-content">
+  <div class="section-head"><span class="icon">📝</span><h3>Content Agent</h3><span class="pill p-FAIL">1 thing to fix, 1 to improve</span></div>
+  <p class="muted" style="margin-top:0">Reads your pages like a visitor would and checks they are useful, original and easy to read.</p>
+  <div class="card issue">
+    <h3>🔴 Pages that are copies of each other</h3>
+    <p class="kv"><b>What we found</b> We found 6 pages copied or nearly copied from another page (out of 8 checked).</p>
+    <p class="kv"><b>Why it matters</b> Google shows only one of the copies and may ignore the rest.</p>
+    <p class="kv"><b>What to do</b> Make each page unique, or remove the copies and point them to the main page.</p>
+    <div class="who">👤 Who can do it: You, or whoever writes your website text</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Duplicate or near-duplicate pages</b> <span class="muted">(content.duplicates · FAIL · 6/8 affected · impact Med · effort Med)</span></p>
+<p>Pages duplicating another page&#39;s content</p><p><b>Why:</b> Duplicate pages compete with each other; search engines pick one and may ignore the rest.<br><b>Fix:</b> Merge duplicates, or set a canonical to the preferred page and differentiate the others.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>group_size: 7; duplicate_of: http://127.0.0.1:58769/about</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:58769/about&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/js-only-target</td><td>group_size: 7; duplicate_of: http://127.0.0.1:58769/about</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:58769/about&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/js-page</td><td>group_size: 7; duplicate_of: http://127.0.0.1:58769/about</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:58769/about&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/new-page</td><td>group_size: 7; duplicate_of: http://127.0.0.1:58769/about</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:58769/about&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/orphan</td><td>group_size: 7; duplicate_of: http://127.0.0.1:58769/about</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:58769/about&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/products</td><td>group_size: 7; duplicate_of: http://127.0.0.1:58769/about</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:58769/about&#34;&gt;</pre></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Pages with very little text</h3>
+    <p class="kv"><b>What we found</b> We found 7 pages with very little useful text (out of 8 checked).</p>
+    <p class="kv"><b>Why it matters</b> Pages with almost nothing to read rarely appear in Google and make the site look unfinished.</p>
+    <p class="kv"><b>What to do</b> Add useful text: what it is, who it&#39;s for, key details and common questions.</p>
+    <div class="who">👤 Who can do it: You, or whoever writes your website text</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Thin content</b> <span class="muted">(content.thin · WARNING · 7/8 affected · impact Med · effort Med)</span></p>
+<p>Pages with under 200 words of unique main text (navigation/footer/repeated text excluded)</p><p><b>Why:</b> Pages with little unique text rarely rank and can drag down perceived site quality.<br><b>Fix:</b> Expand with useful, specific content, or merge/noindex pages that cannot be improved.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/new-page</td><td>total_words: 30; unique_words: 9</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/js-only-target</td><td>total_words: 30; unique_words: 9</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/orphan</td><td>total_words: 30; unique_words: 9</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/about</td><td>total_words: 60; unique_words: 10</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/products</td><td>total_words: 61; unique_words: 11</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/js-page</td><td>total_words: 90; unique_words: 11</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>total_words: 120; unique_words: 12</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <ul class="simple">
+    <li>🟢 <b>One main heading per page</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Same text repeated on many pages</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Headings in a sensible order</b> <span class="muted">· Looks good</span>
+</li>
+    <li>⚪ <b>Pages that answer what customers want to know</b> <span class="muted">· Couldn&#39;t check: Needs the AI assistant to be switched on in Settings.</span>
+</li>
+    <li>⚪ <b>Text that is easy to read</b> <span class="muted">· Doesn&#39;t apply: No English pages with enough text (the readability formula is English-only)</span>
+</li>
+  </ul>
+</div>
+<div class="section" id="agent-meta_tags">
+  <div class="section-head"><span class="icon">🔎</span><h3>Search Listing Agent</h3><span class="pill p-FAIL">2 things to fix, 5 to improve</span></div>
+  <p class="muted" style="margin-top:0">Checks the headline and short description Google shows for each of your pages in search results.</p>
+  <div class="card issue">
+    <h3>🔴 Every page has a Google summary</h3>
+    <p class="kv"><b>What we found</b> We found 1 page with no summary for Google (meta description) (out of 9 checked).</p>
+    <p class="kv"><b>Why it matters</b> The summary is the grey text under your headline in Google. Without it Google picks random text from the page.</p>
+    <p class="kv"><b>What to do</b> Write a 1–2 sentence summary per page. Suggestions are in the technical details.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Missing meta description</b> <span class="muted">(meta.description_missing · FAIL · 1/9 affected · impact Med · effort Low)</span></p>
+<p>Pages without a meta description</p><p><b>Why:</b> Without one, search engines pick a snippet, which is often less compelling.<br><b>Fix:</b> Write a unique 120–160 character description that summarises the page and invites the click.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/about</td><td>meta_description: (missing)</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🔴 Each page has its own Google headline</h3>
+    <p class="kv"><b>What we found</b> We found 2 pages sharing the same Google headline with other pages (out of 8 checked).</p>
+    <p class="kv"><b>Why it matters</b> If many pages have the same headline, Google and searchers can&#39;t tell them apart.</p>
+    <p class="kv"><b>What to do</b> Give each page its own headline that names what&#39;s on it. Suggestions are in the technical details.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Duplicate titles</b> <span class="muted">(meta.title_duplicate · FAIL · 2/8 affected · impact Med · effort Med)</span></p>
+<p>1 group(s) of pages share the same title</p><p><b>Why:</b> Identical titles make pages compete with each other and hide what is unique.<br><b>Fix:</b> Give each page a unique title that reflects its specific content.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/about</td><td>title: About Acme Widgets | Acme; group_size: 2; shared_with: [http://127.0.0.1:58769/orphan]</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/orphan</td><td>title: About Acme Widgets | Acme; group_size: 2; shared_with: [http://127.0.0.1:58769/about]</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Google headlines that fit</h3>
+    <p class="kv"><b>What we found</b> We found 1 page with a Google headline too long to show in full (out of 9 checked).</p>
+    <p class="kv"><b>Why it matters</b> Long headlines are cut off with &#39;…&#39; in search results.</p>
+    <p class="kv"><b>What to do</b> Keep headlines under about 60 characters, most important words first.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Title too long (truncated in results)</b> <span class="muted">(meta.title_too_long · WARNING · 1/9 affected · impact Low · effort Low)</span></p>
+<p>Titles over 60 chars or ~580px</p><p><b>Why:</b> Titles beyond ~60 characters / ~580 px are cut off in search results.<br><b>Fix:</b> Shorten to ~50–60 characters, putting the main keyword first.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>chars: 108; title: The Complete and Extremely Detailed Guide to Choosing, Installing and Maintaining Industrial Widgets in 2026; pixels_est: 982</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl, Estimate (pixel width, Arial 20px)</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Google headlines with enough detail</h3>
+    <p class="kv"><b>What we found</b> We found 4 pages with a very short Google headline (out of 9 checked).</p>
+    <p class="kv"><b>Why it matters</b> A one- or two-word headline wastes space that could tell searchers why to click.</p>
+    <p class="kv"><b>What to do</b> Use 30–60 characters: what the page offers, plus your brand name.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Title too short</b> <span class="muted">(meta.title_too_short · WARNING · 4/9 affected · impact Low · effort Low)</span></p>
+<p>Titles under 30 characters</p><p><b>Why:</b> Very short titles waste space that could describe the page and earn clicks.<br><b>Fix:</b> Expand to ~50–60 characters with the main topic and a differentiator.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/about</td><td>chars: 25; title: About Acme Widgets | Acme</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/team</td><td>chars: 25; title: About Acme Widgets | Acme</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/js-page</td><td>chars: 19; title: Widget configurator</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/orphan</td><td>chars: 25; title: About Acme Widgets | Acme</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Each page has its own Google summary</h3>
+    <p class="kv"><b>What we found</b> We found 2 pages sharing the same Google summary with other pages (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> Identical summaries make your results look the same, so fewer people click.</p>
+    <p class="kv"><b>What to do</b> Write a unique summary for each page. Suggestions are in the technical details.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Duplicate meta descriptions</b> <span class="muted">(meta.description_duplicate · WARNING · 2/7 affected · impact Med · effort Med)</span></p>
+<p>1 group(s) of pages share the same meta description</p><p><b>Why:</b> Duplicate descriptions make results look identical and reduce click-through.<br><b>Fix:</b> Write a unique description for each page.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>group_size: 2; shared_with: [http://127.0.0.1:58769/products]; meta_description: Acme Widgets makes durable, precise widgets for workshops, factories and homes. Browse products, read guides and get support.</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/products</td><td>group_size: 2; shared_with: [http://127.0.0.1:58769/]; meta_description: Acme Widgets makes durable, precise widgets for workshops, factories and homes. Browse products, read guides and get support.</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Google summaries of the right length</h3>
+    <p class="kv"><b>What we found</b> We found 6 pages with a Google summary that is too short or too long (out of 9 checked).</p>
+    <p class="kv"><b>Why it matters</b> Summaries that are too long are cut off; very short ones look thin.</p>
+    <p class="kv"><b>What to do</b> Aim for 120–155 characters.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Meta description too short or too long</b> <span class="muted">(meta.description_length · WARNING · 6/9 affected · impact Low · effort Low)</span></p>
+<p>Descriptions outside 120–160 characters</p><p><b>Why:</b> Descriptions outside ~120–160 characters are truncated or look thin.<br><b>Fix:</b> Aim for 120–160 characters.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/team</td><td>chars: 98; problem: too short; meta_description: Meet the Acme Widgets team of engineers and designers who build durable widgets for your workshop.</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>chars: 6; problem: too short; meta_description: Short.</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/js-page</td><td>chars: 99; problem: too short; meta_description: Configure your widget online with the Acme configurator. Pick size, finish and options, then order.</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/new-page</td><td>chars: 91; problem: too short; meta_description: This page is the final destination of a redirect chain used in the SEO Inspector test site.</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/js-only-target</td><td>chars: 84; problem: too short; meta_description: A gallery of widgets configured by Acme customers, with sizes, finishes and options.</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/orphan</td><td>chars: 86; problem: too short; meta_description: An orphan page that is listed in the sitemap but not linked from anywhere on the site.</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Nice previews when shared on WhatsApp or social media</h3>
+    <p class="kv"><b>What we found</b> We found 7 pages without a proper preview when shared (out of 8 checked).</p>
+    <p class="kv"><b>Why it matters</b> When someone shares your link, a missing preview shows a plain link instead of a picture and headline.</p>
+    <p class="kv"><b>What to do</b> Ask your designer to add social sharing tags (title, description and image).</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Missing Open Graph / Twitter tags</b> <span class="muted">(meta.social_tags · WARNING · 7/8 affected · impact Low · effort Low)</span></p>
+<p>Pages missing Open Graph tags</p><p><b>Why:</b> Without og:title/og:description/og:image, shared links render poorly on social and chat apps.<br><b>Fix:</b> Add og:title, og:description, og:image (and twitter:card).</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/about</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;About Acme Widgets | Acme&#34;&gt;
 &lt;meta property=&#34;og:image&#34; content=&#34;https://… (1200×630 image URL)&#34;&gt;
-&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:8765/about&#34;&gt;
-&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/blog/post-1</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;The Complete and Extremely Detailed Guide to Choosing, Installing and Maintaining Industrial Widgets in 2026&#34;&gt;
-&lt;meta property=&#34;og:description&#34; content=&#34;Short.&#34;&gt;
-&lt;meta property=&#34;og:image&#34; content=&#34;https://… (1200×630 image URL)&#34;&gt;
-&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:8765/blog/post-1&#34;&gt;
-&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/products</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;Products – Acme Widgets catalogue and prices&#34;&gt;
+&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:58769/about&#34;&gt;
+&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/products</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;Products – Acme Widgets catalogue and prices&#34;&gt;
 &lt;meta property=&#34;og:description&#34; content=&#34;Acme Widgets makes durable, precise widgets for workshops, factories and homes. Browse products, read guides and get support.&#34;&gt;
 &lt;meta property=&#34;og:image&#34; content=&#34;https://… (1200×630 image URL)&#34;&gt;
-&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:8765/products&#34;&gt;
-&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/js-page</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;Widget configurator&#34;&gt;
+&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:58769/products&#34;&gt;
+&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;The Complete and Extremely Detailed Guide to Choosing, Installing and Maintaining Industrial Widgets in 2026&#34;&gt;
+&lt;meta property=&#34;og:description&#34; content=&#34;Short.&#34;&gt;
+&lt;meta property=&#34;og:image&#34; content=&#34;https://… (1200×630 image URL)&#34;&gt;
+&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:58769/blog/post-1&#34;&gt;
+&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/js-page</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;Widget configurator&#34;&gt;
 &lt;meta property=&#34;og:description&#34; content=&#34;Configure your widget online with the Acme configurator. Pick size, finish and options, then order.&#34;&gt;
 &lt;meta property=&#34;og:image&#34; content=&#34;https://… (1200×630 image URL)&#34;&gt;
-&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:8765/js-page&#34;&gt;
-&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/new-page</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;New page after redirects – Acme Widgets&#34;&gt;
+&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:58769/js-page&#34;&gt;
+&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/new-page</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;New page after redirects – Acme Widgets&#34;&gt;
 &lt;meta property=&#34;og:description&#34; content=&#34;This page is the final destination of a redirect chain used in the SEO Inspector test site.&#34;&gt;
 &lt;meta property=&#34;og:image&#34; content=&#34;https://… (1200×630 image URL)&#34;&gt;
-&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:8765/new-page&#34;&gt;
-&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/js-only-target</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;Configured widgets gallery – Acme Widgets&#34;&gt;
+&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:58769/new-page&#34;&gt;
+&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/js-only-target</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;Configured widgets gallery – Acme Widgets&#34;&gt;
 &lt;meta property=&#34;og:description&#34; content=&#34;A gallery of widgets configured by Acme customers, with sizes, finishes and options.&#34;&gt;
 &lt;meta property=&#34;og:image&#34; content=&#34;https://… (1200×630 image URL)&#34;&gt;
-&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:8765/js-only-target&#34;&gt;
-&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/orphan</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;About Acme Widgets | Acme&#34;&gt;
+&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:58769/js-only-target&#34;&gt;
+&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/orphan</td><td>missing_og: [title, description, image]</td><td><pre>&lt;meta property=&#34;og:title&#34; content=&#34;About Acme Widgets | Acme&#34;&gt;
 &lt;meta property=&#34;og:description&#34; content=&#34;An orphan page that is listed in the sitemap but not linked from anywhere on the site.&#34;&gt;
 &lt;meta property=&#34;og:image&#34; content=&#34;https://… (1200×630 image URL)&#34;&gt;
-&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:8765/orphan&#34;&gt;
-&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Primary keyword present in title</b>
-<span class="muted">3. Meta Tags</span></summary>
-<div class="body">
-<p><b>Not measured:</b> Needs the keyword map and LLM layer (Keyword Research module), which is not built yet</p></div></details>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Title/description match search intent</b>
-<span class="muted">3. Meta Tags</span></summary>
-<div class="body">
-<p><b>Not measured:</b> Needs the keyword map and LLM layer (Keyword Research module), which is not built yet</p></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Missing title tag</b>
-<span class="muted">3. Meta Tags</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Multiple title tags</b>
-<span class="muted">3. Meta Tags</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Multiple meta descriptions</b>
-<span class="muted">3. Meta Tags</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Internal Linking</b>
-<span class="muted">4. Internal Linking</span></summary>
-<div class="body">
-<p><b>Not measured:</b> This module is not built yet (planned for build phase 2)</p></div></details>
-<details open>
-<summary><span class="badge FAIL">FAIL</span><b>Images missing alt attribute</b>
-<span class="muted">5. Image SEO · 1/8 affected · impact Med · effort Low</span></summary>
-<div class="body">
-<p>Images with no alt attribute</p><p><b>Why it matters:</b> Alt text describes images to search engines and screen-reader users.<br><b>Fix:</b> Add descriptive alt text (what the image shows, in context).</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>src: http://127.0.0.1:8765/img/IMG_1234.jpg; filename: IMG_1234.jpg</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details open>
-<summary><span class="badge FAIL">FAIL</span><b>Heavy image files</b>
-<span class="muted">5. Image SEO · 1/7 affected · impact Med · effort Med</span></summary>
-<div class="body">
-<p>Images over 150 KB (FAIL above 500 KB)</p><p><b>Why it matters:</b> Large images slow page loads and hurt Largest Contentful Paint.<br><b>Fix:</b> Compress and resize; serve WebP/AVIF at the displayed size.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>kb: 556; src: http://127.0.0.1:8765/img/IMG_1234.jpg; format: jpeg; used_on: [http://127.0.0.1:8765/]; intrinsic: [2000, 1500]; exact_size: True</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Images without width/height attributes</b>
-<span class="muted">5. Image SEO · 6/8 affected · impact Med · effort Low</span></summary>
-<div class="body">
-<p>Images without explicit width and height</p><p><b>Why it matters:</b> Without dimensions the browser cannot reserve space, causing layout shift (CLS).<br><b>Fix:</b> Add width and height attributes matching the image&#39;s aspect ratio.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>src: http://127.0.0.1:8765/img/IMG_1234.jpg; width: 400</td><td><pre>width=&#34;2000&#34; height=&#34;1500&#34;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/</td><td>src: http://127.0.0.1:8765/img/logo.png</td><td><pre>width=&#34;120&#34; height=&#34;80&#34;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/blog/post-1</td><td>src: http://127.0.0.1:8765/img/photo.png</td><td><pre>width=&#34;640&#34; height=&#34;480&#34;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/blog/post-1</td><td>src: http://127.0.0.1:8765/img/a.png</td><td><pre>width=&#34;40&#34; height=&#34;40&#34;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/blog/post-1</td><td>src: http://127.0.0.1:8765/img/b.png</td><td><pre>width=&#34;40&#34; height=&#34;40&#34;</pre></td></tr><tr><td class="url">http://127.0.0.1:8765/blog/post-1</td><td>src: http://127.0.0.1:8765/img/c.png</td><td><pre>width=&#34;40&#34; height=&#34;40&#34;</pre></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Lazy-loading on the first/hero image</b>
-<span class="muted">5. Image SEO · 1/2 affected · impact Med · effort Low</span></summary>
-<div class="body">
-<p>First image on the page is lazy-loaded</p><p><b>Why it matters:</b> Lazy-loading the main above-the-fold image delays Largest Contentful Paint.<br><b>Fix:</b> Remove loading=&#34;lazy&#34; from the first visible image (consider fetchpriority=&#34;high&#34;).</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>src: http://127.0.0.1:8765/img/hero.png; loading: lazy</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Empty alt on meaningful images</b>
-<span class="muted">5. Image SEO · 1/8 affected · impact Low · effort Low</span></summary>
-<div class="body">
-<p>Linked or large images with empty alt</p><p><b>Why it matters:</b> Empty alt marks an image as decorative; on linked or large content images it hides meaning.<br><b>Fix:</b> Describe content images and image links; keep alt=&#34;&#34; only for decorative images.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>src: http://127.0.0.1:8765/img/logo.png; in_link: True; intrinsic_w: 120</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Images much larger than their display size</b>
-<span class="muted">5. Image SEO · 1/8 affected · impact Med · effort Med</span></summary>
-<div class="body">
-<p>Images over 2.0× their display width</p><p><b>Why it matters:</b> Serving a 2000px image in a 400px slot wastes bandwidth.<br><b>Fix:</b> Resize to ~2× the display width and use srcset/sizes for responsive images.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>src: http://127.0.0.1:8765/img/IMG_1234.jpg; display_w: 400; intrinsic_w: 2000; display_source: rendered</td><td><pre>{
+&lt;meta property=&#34;og:url&#34; content=&#34;http://127.0.0.1:58769/orphan&#34;&gt;
+&lt;meta name=&#34;twitter:card&#34; content=&#34;summary_large_image&#34;&gt;</pre></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <ul class="simple">
+    <li>🟢 <b>Every page has a Google headline</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>One Google headline per page</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>One Google summary per page</b> <span class="muted">· Looks good</span>
+</li>
+    <li>⚪ <b>Google headlines include the right search phrase</b> <span class="muted">· Couldn&#39;t check: Needs the AI assistant to be switched on in Settings.</span>
+</li>
+    <li>⚪ <b>Headlines that match what searchers want</b> <span class="muted">· Couldn&#39;t check: Needs the AI assistant to be switched on in Settings.</span>
+</li>
+  </ul>
+</div>
+<div class="section" id="agent-internal_links">
+  <div class="section-head"><span class="icon">🧭</span><h3>Navigation Agent</h3><span class="pill p-FAIL">1 thing to fix, 2 to improve</span></div>
+  <p class="muted" style="margin-top:0">Checks that your pages link to each other, so visitors and Google can find everything.</p>
+  <div class="card issue">
+    <h3>🔴 Pages nobody can click through to</h3>
+    <p class="kv"><b>What we found</b> We found 1 page that no other page links to (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> Like rooms without a door: visitors can&#39;t reach these pages and Google treats them as unimportant.</p>
+    <p class="kv"><b>What to do</b> Link to these pages from related pages, menus or listing pages (for example, make blog cards real links).</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Orphan pages (in sitemap, no internal links)</b> <span class="muted">(links.orphans · FAIL · 1/7 affected · impact Med · effort Low)</span></p>
+<p>1 sitemap page(s) with no internal links — every page reachable by following links from the homepage was crawled, so these are only discoverable through the sitemap. Check listing pages (e.g. a blog index) use real &lt;a href&gt; links, not JavaScript click handlers.</p><p><b>Why:</b> Pages no other page links to get little crawl priority and no link equity.<br><b>Fix:</b> Link to each orphan from relevant pages (see the link suggestions), or remove it from the sitemap if it should not exist.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/orphan</td><td>crawled: True; in_sitemap: True</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Pages with very few links pointing to them</h3>
+    <p class="kv"><b>What we found</b> We found 5 pages with only one or two links from your other pages (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> Pages that are rarely linked look less important to Google.</p>
+    <p class="kv"><b>What to do</b> Add links to them from related pages.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Pages with fewer than 3 internal links pointing to them</b> <span class="muted">(links.few_inlinks · WARNING · 5/7 affected · impact Med · effort Low)</span></p>
+<p>Pages with 1–2 inbound internal link(s)</p><p><b>Why:</b> Weakly linked pages are seen as less important and are crawled less often.<br><b>Fix:</b> Add contextual links from related pages and hub/category pages.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/products</td><td>from: [http://127.0.0.1:58769/]; inlinks: 1</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>from: [http://127.0.0.1:58769/]; inlinks: 1</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/js-page</td><td>from: [http://127.0.0.1:58769/]; inlinks: 1</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/new-page</td><td>from: [http://127.0.0.1:58769/]; inlinks: 1</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/js-only-target</td><td>from: [http://127.0.0.1:58769/js-page]; inlinks: 1</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Link text that says where it goes</h3>
+    <p class="kv"><b>What we found</b> We found 1 link with vague text like &#39;click here&#39; or &#39;read more&#39; (out of 18 checked).</p>
+    <p class="kv"><b>Why it matters</b> Link text tells Google what the linked page is about. &#39;Click here&#39; tells it nothing.</p>
+    <p class="kv"><b>What to do</b> Use descriptive link text, e.g. &#39;see our rental go-karts&#39;.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Generic anchor text (&#34;click here&#34;, &#34;read more&#34;)</b> <span class="muted">(links.generic_anchors · WARNING · 1/18 affected · impact Low · effort Low)</span></p>
+<p>Internal links with generic anchor text: 1 link(s), 1 distinct pattern(s)</p><p><b>Why:</b> Anchor text tells search engines what the target page is about; generic text wastes that.<br><b>Fix:</b> Use descriptive anchors that name the target topic.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>pages: 1; anchor: Read more; target: http://127.0.0.1:58769/about</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <ul class="simple">
+    <li>🟢 <b>Helpful links you could add between your pages</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Pages buried too deep</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Links with no text</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Links between your own pages that block Google</b> <span class="muted">· Looks good</span>
+</li>
+  </ul>
+</div>
+<div class="section" id="agent-images">
+  <div class="section-head"><span class="icon">🖼️</span><h3>Image Agent</h3><span class="pill p-FAIL">2 things to fix, 6 to improve</span></div>
+  <p class="muted" style="margin-top:0">Checks that your pictures load quickly and have descriptions Google and blind visitors can understand.</p>
+  <div class="card issue">
+    <h3>🔴 Images have a description</h3>
+    <p class="kv"><b>What we found</b> We found 1 image without a text description (alt text) (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> Google can&#39;t see pictures; it reads the description. Blind visitors&#39; screen readers read it aloud too.</p>
+    <p class="kv"><b>What to do</b> Add a short description to each image. Suggestions are in the technical details.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Images missing alt attribute</b> <span class="muted">(img.alt_missing · FAIL · 1/7 affected · impact Med · effort Low)</span></p>
+<p>Images with no alt attribute (unique image files)</p><p><b>Why:</b> Alt text describes images to search engines and screen-reader users.<br><b>Fix:</b> Add descriptive alt text (what the image shows, in context).</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>src: http://127.0.0.1:58769/img/IMG_1234.jpg; pages: 1; filename: IMG_1234.jpg; occurrences: 1</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🔴 Images that aren&#39;t too heavy</h3>
+    <p class="kv"><b>What we found</b> We found 1 image with a very large file size (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> Big images make pages slow, especially on mobile data.</p>
+    <p class="kv"><b>What to do</b> Compress images (free tools like Squoosh or TinyPNG) before uploading.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Heavy image files</b> <span class="muted">(img.file_size · FAIL · 1/7 affected · impact Med · effort Med)</span></p>
+<p>Images over 150 KB (FAIL above 500 KB)</p><p><b>Why:</b> Large images slow page loads and hurt Largest Contentful Paint.<br><b>Fix:</b> Compress and resize; serve WebP/AVIF at the displayed size.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>kb: 556; src: http://127.0.0.1:58769/img/IMG_1234.jpg; pages: 1; format: jpeg; intrinsic: [2000, 1500]; exact_size: True</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Clickable images have a description</h3>
+    <p class="kv"><b>What we found</b> We found 1 image used as a link but with no description (out of 1 checked).</p>
+    <p class="kv"><b>Why it matters</b> When a picture is the link, its description is the only clue to where the link goes.</p>
+    <p class="kv"><b>What to do</b> Describe where each clickable image leads.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Image links with empty alt (link has no text)</b> <span class="muted">(img.alt_empty · WARNING · 1/1 affected · impact Med · effort Low)</span></p>
+<p>Image-only links whose image has empty alt</p><p><b>Why:</b> When an image is the only content of a link, its alt is the link&#39;s anchor text; empty alt leaves the link with no name for search engines and screen readers.<br><b>Fix:</b> Give the image an alt that describes the link target (e.g. &#34;Genesis TS22 kart&#34;).</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>src: http://127.0.0.1:58769/img/logo.png; pages: 1; occurrences: 1</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Images with a reserved space</h3>
+    <p class="kv"><b>What we found</b> We found 6 images without a set size (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> Without a set size the page jumps around while images load, which annoys visitors.</p>
+    <p class="kv"><b>What to do</b> Ask your designer to add width and height to images.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Images without width/height attributes</b> <span class="muted">(img.missing_dimensions · WARNING · 6/7 affected · impact Med · effort Low)</span></p>
+<p>Images without explicit width and height</p><p><b>Why:</b> Without dimensions the browser cannot reserve space, causing layout shift (CLS).<br><b>Fix:</b> Add width and height attributes matching the image&#39;s aspect ratio.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>src: http://127.0.0.1:58769/img/IMG_1234.jpg; pages: 1; width: 400; occurrences: 1</td><td><pre>width=&#34;2000&#34; height=&#34;1500&#34;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/</td><td>src: http://127.0.0.1:58769/img/logo.png; pages: 1; occurrences: 1</td><td><pre>width=&#34;120&#34; height=&#34;80&#34;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>src: http://127.0.0.1:58769/img/photo.png; pages: 1; occurrences: 1</td><td><pre>width=&#34;640&#34; height=&#34;480&#34;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>src: http://127.0.0.1:58769/img/a.png; pages: 1; occurrences: 1</td><td><pre>width=&#34;40&#34; height=&#34;40&#34;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>src: http://127.0.0.1:58769/img/b.png; pages: 1; occurrences: 1</td><td><pre>width=&#34;40&#34; height=&#34;40&#34;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>src: http://127.0.0.1:58769/img/c.png; pages: 1; occurrences: 1</td><td><pre>width=&#34;40&#34; height=&#34;40&#34;</pre></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 The main image loads immediately</h3>
+    <p class="kv"><b>What we found</b> We found 1 page where the main image at the top is set to load late (out of 2 checked).</p>
+    <p class="kv"><b>Why it matters</b> The first big picture visitors see appears later than it should.</p>
+    <p class="kv"><b>What to do</b> Ask your designer to remove lazy loading from the top image.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Lazy-loading on the first/hero image</b> <span class="muted">(img.lazy_above_fold · WARNING · 1/2 affected · impact Med · effort Low)</span></p>
+<p>First image on the page is lazy-loaded</p><p><b>Why:</b> Lazy-loading the main above-the-fold image delays Largest Contentful Paint.<br><b>Fix:</b> Remove loading=&#34;lazy&#34; from the first visible image (consider fetchpriority=&#34;high&#34;).</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>src: http://127.0.0.1:58769/img/hero.png; loading: lazy</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Images not bigger than needed</h3>
+    <p class="kv"><b>What we found</b> We found 1 image much bigger than the space they are shown in (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> Visitors download a large picture just to see a small one, which slows the page.</p>
+    <p class="kv"><b>What to do</b> Resize images to roughly the size they are displayed at.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Images much larger than their display size</b> <span class="muted">(img.oversized_dimensions · WARNING · 1/7 affected · impact Med · effort Med)</span></p>
+<p>Images over 2.0× their display width</p><p><b>Why:</b> Serving a 2000px image in a 400px slot wastes bandwidth.<br><b>Fix:</b> Resize to ~2× the display width and use srcset/sizes for responsive images.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>src: http://127.0.0.1:58769/img/IMG_1234.jpg; pages: 1; display_w: 400; intrinsic_w: 2000; occurrences: 1; display_source: rendered</td><td><pre>{
   &#34;note&#34;: &#34;Resize to 800px wide (2× display) or add srcset&#34;,
   &#34;type&#34;: &#34;resize&#34;,
   &#34;target_width&#34;: 800
-}</pre></td></tr></tbody></table>
-<div class="src">Source: Crawl, Headless render sample (display sizes)</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Non-descriptive image file names</b>
-<span class="muted">5. Image SEO · 2/7 affected · impact Low · effort Med</span></summary>
-<div class="body">
-<p>Generic or random image file names</p><p><b>Why it matters:</b> File names like IMG_1234.jpg give search engines no context.<br><b>Fix:</b> Rename files to short descriptive slugs (e.g. red-leather-sofa.jpg) and update references.</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>src: http://127.0.0.1:8765/img/IMG_1234.jpg; used_on: [http://127.0.0.1:8765/]; filename: IMG_1234.jpg</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/blog/post-1</td><td>src: http://127.0.0.1:8765/img/photo.png; used_on: [http://127.0.0.1:8765/blog/post-1]; filename: photo.png</td><td></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge WARNING">WARNING</span><b>Images not in a modern format (WebP/AVIF)</b>
-<span class="muted">5. Image SEO · 1/7 affected · impact Low · effort Med</span></summary>
-<div class="body">
-<p>JPEG/PNG/GIF images that could be WebP/AVIF</p><p><b>Why it matters:</b> WebP/AVIF are typically 25–50% smaller than JPEG/PNG at the same quality.<br><b>Fix:</b> Convert to WebP or AVIF (or serve via &lt;picture&gt; with a JPEG/PNG fallback).</p><table><thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>kb: 556; src: http://127.0.0.1:8765/img/IMG_1234.jpg; format: jpeg</td><td><pre>cwebp -q 80 input.jpeg -o output.webp</pre></td></tr></tbody></table>
-<div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>AI-generated alt text suggestions</b>
-<span class="muted">5. Image SEO</span></summary>
-<div class="body">
-<p><b>Not measured:</b> Vision-model alt text is part of the LLM layer, which is not built yet</p></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Broken images</b>
-<span class="muted">5. Image SEO</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: Crawl</div></div></details>
-<details>
-<summary><span class="badge PASS">PASS</span><b>Below-the-fold images not lazy-loaded</b>
-<span class="muted">5. Image SEO</span></summary>
-<div class="body">
-<p>No issues found</p><div class="src">Source: Crawl</div></div></details>
-<h3>Performance</h3>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Website Performance</b>
-<span class="muted">8. Website Performance</span></summary>
-<div class="body">
-<p><b>Not measured:</b> This module is not built yet (planned for build phase 2)</p></div></details>
-<h3>Schema</h3>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Schema Markup</b>
-<span class="muted">9. Schema Markup</span></summary>
-<div class="body">
-<p><b>Not measured:</b> This module is not built yet (planned for build phase 2)</p></div></details>
-<h3>Off-page</h3>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Backlink Analysis</b>
-<span class="muted">10. Backlink Analysis</span></summary>
-<div class="body">
-<p><b>Not measured:</b> This module is not built yet (planned for build phase 4)</p></div></details>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Link Building &amp; Outreach</b>
-<span class="muted">11. Link Building &amp; Outreach</span></summary>
-<div class="body">
-<p><b>Not measured:</b> This module is not built yet (planned for build phase 4)</p></div></details>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Brand Mentions &amp; Reputation</b>
-<span class="muted">12. Brand Mentions &amp; Reputation</span></summary>
-<div class="body">
-<p><b>Not measured:</b> This module is not built yet (planned for build phase 4)</p></div></details>
-<h3>Local</h3>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Google Business Profile</b>
-<span class="muted">13. Google Business Profile</span></summary>
-<div class="body">
-<p><b>Not measured:</b> This module is not built yet (planned for build phase 5)</p></div></details>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Citations &amp; NAP</b>
-<span class="muted">14. Citations &amp; NAP</span></summary>
-<div class="body">
-<p><b>Not measured:</b> This module is not built yet (planned for build phase 5)</p></div></details>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>Review Management</b>
-<span class="muted">15. Review Management</span></summary>
-<div class="body">
-<p><b>Not measured:</b> This module is not built yet (planned for build phase 5)</p></div></details>
-<h3>AI Search &amp; GEO</h3>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>AI Search Visibility</b>
-<span class="muted">16. AI Search Visibility</span></summary>
-<div class="body">
-<p><b>Not measured:</b> This module is not built yet (planned for build phase 4)</p></div></details>
-<details>
-<summary><span class="badge NOT_CHECKED">NOT_CHECKED</span><b>GEO Content Optimization</b>
-<span class="muted">17. GEO Content Optimization</span></summary>
-<div class="body">
-<p><b>Not measured:</b> This module is not built yet (planned for build phase 3)</p></div></details>
+}</pre></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl, Headless render sample (display sizes)</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Image file names that make sense</h3>
+    <p class="kv"><b>What we found</b> We found 2 images with meaningless file names like IMG_1234.jpg (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> File names are a small clue for Google Images.</p>
+    <p class="kv"><b>What to do</b> Rename images with descriptive words, e.g. rental-go-kart.jpg.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Non-descriptive image file names</b> <span class="muted">(img.filename · WARNING · 2/7 affected · impact Low · effort Med)</span></p>
+<p>Generic or random image file names</p><p><b>Why:</b> File names like IMG_1234.jpg give search engines no context.<br><b>Fix:</b> Rename files to short descriptive slugs (e.g. red-leather-sofa.jpg) and update references.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>src: http://127.0.0.1:58769/img/IMG_1234.jpg; pages: 1; filename: IMG_1234.jpg</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>src: http://127.0.0.1:58769/img/photo.png; pages: 1; filename: photo.png</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Images in modern, lighter formats</h3>
+    <p class="kv"><b>What we found</b> We found 1 image in older, heavier formats (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> Modern formats (WebP, AVIF) are often half the size with the same quality.</p>
+    <p class="kv"><b>What to do</b> Ask your designer to serve images as WebP or AVIF.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Images not in a modern format (WebP/AVIF)</b> <span class="muted">(img.legacy_format · WARNING · 1/7 affected · impact Low · effort Med)</span></p>
+<p>JPEG/PNG/GIF images that could be WebP/AVIF</p><p><b>Why:</b> WebP/AVIF are typically 25–50% smaller than JPEG/PNG at the same quality.<br><b>Fix:</b> Convert to WebP or AVIF (or serve via &lt;picture&gt; with a JPEG/PNG fallback).</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>kb: 556; src: http://127.0.0.1:58769/img/IMG_1234.jpg; pages: 1; format: jpeg</td><td><pre>cwebp -q 80 input.jpeg -o output.webp</pre></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <ul class="simple">
+    <li>🟢 <b>Images that don&#39;t load</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Images lower down load only when needed</b> <span class="muted">· Looks good</span>
+</li>
+    <li>⚪ <b>Image descriptions written for you</b> <span class="muted">· Couldn&#39;t check: Needs the AI assistant to be switched on in Settings.</span>
+</li>
+  </ul>
+</div>
+<div class="section" id="agent-technical">
+  <div class="section-head"><span class="icon">🩺</span><h3>Website Health Agent</h3><span class="pill p-FAIL">8 things to fix, 6 to improve</span></div>
+  <p class="muted" style="margin-top:0">Looks for broken pages, dead links, security warnings and other faults that put visitors and Google off.</p>
+  <div class="card issue">
+    <h3>🔴 Pages that show &#39;page not found&#39;</h3>
+    <p class="kv"><b>What we found</b> We found 2 pages showing an error such as &#39;page not found&#39; (out of 15 checked).</p>
+    <p class="kv"><b>Why it matters</b> Visitors who land on these leave, and Google removes them from its results.</p>
+    <p class="kv"><b>What to do</b> Fix the pages, or redirect each old address to the best current page.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Pages returning 4xx errors</b> <span class="muted">(tech.status_4xx · FAIL · 2/15 affected · impact High · effort Low)</span></p>
+<p>Internal URLs return client errors</p><p><b>Why:</b> Search engines drop 4xx URLs from the index, and visitors who land on them leave.<br><b>Fix:</b> Restore the page, 301-redirect it to the closest live page, or remove the links pointing to it.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/missing</td><td>status: 404; in_sitemap: False; linked_from: [http://127.0.0.1:58769/]</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/gone</td><td>status: 404; in_sitemap: True</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🔴 Broken links on your site</h3>
+    <p class="kv"><b>What we found</b> We found 1 page with links to pages on your site that don&#39;t work (out of 10 checked).</p>
+    <p class="kv"><b>Why it matters</b> Dead ends frustrate visitors and waste Google&#39;s time.</p>
+    <p class="kv"><b>What to do</b> Update or remove the broken links (the list is in the technical details).</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Broken internal links</b> <span class="muted">(tech.broken_internal_links · FAIL · 1/10 affected · impact High · effort Low)</span></p>
+<p>1 broken internal link(s) on 1 page(s)</p><p><b>Why:</b> Broken links waste crawl budget, leak link equity and frustrate visitors.<br><b>Fix:</b> Update each link to point at a live URL (or remove it).</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>count: 1; broken_links: [{link: http://127.0.0.1:58769/missing, status: 404}]</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🔴 Addresses that forward in a circle</h3>
+    <p class="kv"><b>What we found</b> We found 1 page stuck forwarding in a loop (out of 14 checked).</p>
+    <p class="kv"><b>Why it matters</b> These pages can never be opened by anyone.</p>
+    <p class="kv"><b>What to do</b> Ask your developer to fix the forwarding rules.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Redirect loops</b> <span class="muted">(tech.redirect_loops · FAIL · 1/14 affected · impact High · effort Low)</span></p>
+<p>Redirect loops found</p><p><b>Why:</b> A loop makes the URL unreachable for users and search engines.<br><b>Fix:</b> Fix the redirect rules so the URL resolves to a 200 page.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/loop-a</td><td>chain: [{url: http://127.0.0.1:58769/loop-a, status: 301, location: http://127.0.0.1:58769/loop-b}, {url: http://127.0.0.1:58769/loop-b, status: 301, location: http://127.0.0.1:58769/loop-a}]</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🔴 Main-address tags that point to a broken page</h3>
+    <p class="kv"><b>What we found</b> We found 1 page pointing Google to a &#39;main address&#39; that doesn&#39;t work (out of 10 checked).</p>
+    <p class="kv"><b>Why it matters</b> Google ignores the instruction and may show the wrong page.</p>
+    <p class="kv"><b>What to do</b> Point the tag at the correct, working address.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Canonical points to a non-200 URL</b> <span class="muted">(tech.canonical_broken · FAIL · 1/10 affected · impact High · effort Low)</span></p>
+<p>Canonical tags point at URLs that do not return 200</p><p><b>Why:</b> A canonical to an error or redirect is ignored and confuses indexing.<br><b>Fix:</b> Point the canonical at the live, final (200) version of the page.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/team</td><td>canonical: http://127.0.0.1:58769/missing; canonical_status: 404; canonical_redirects: 0</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:58769/team&#34;&gt;</pre></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🔴 Important pages hidden from Google</h3>
+    <p class="kv"><b>What we found</b> We found 1 page set to stay out of Google even though they look important (out of 10 checked).</p>
+    <p class="kv"><b>Why it matters</b> These pages can never appear in Google results.</p>
+    <p class="kv"><b>What to do</b> Remove the &#39;noindex&#39; setting from these pages.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Noindex on important pages</b> <span class="muted">(tech.noindex_important · FAIL · 1/10 affected · impact High · effort Low)</span></p>
+<p>Important pages are set to noindex</p><p><b>Why:</b> Important pages with noindex cannot appear in search results.<br><b>Fix:</b> Remove the noindex directive (meta robots or X-Robots-Tag) if the page should rank.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/noindex-page</td><td>depth: 1; inlinks: 1; in_sitemap: True; meta_robots: noindex, follow</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🔴 Pages fit on mobile phones</h3>
+    <p class="kv"><b>What we found</b> We found 1 page not set up to fit mobile screens (out of 10 checked).</p>
+    <p class="kv"><b>Why it matters</b> Google ranks sites based on the mobile version; pages that don&#39;t fit phones lose out.</p>
+    <p class="kv"><b>What to do</b> Ask your designer to add the mobile &#39;viewport&#39; setting.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Missing or incorrect viewport meta tag</b> <span class="muted">(tech.viewport · FAIL · 1/10 affected · impact High · effort Low)</span></p>
+<p>Pages lack a responsive viewport</p><p><b>Why:</b> Without a responsive viewport the page fails mobile-friendliness (mobile-first indexing).<br><b>Fix:</b> Add &lt;meta name=&#34;viewport&#34; content=&#34;width=device-width, initial-scale=1&#34;&gt;.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/about</td><td>viewport: (missing)</td><td><pre>&lt;meta name=&#34;viewport&#34; content=&#34;width=device-width, initial-scale=1&#34;&gt;</pre></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🔴 The site is secure (padlock)</h3>
+    <p class="kv"><b>What we found</b> The site is not fully secure (no padlock, or the insecure version still opens).</p>
+    <p class="kv"><b>Why it matters</b> Browsers show &#39;Not secure&#39; warnings, which scare visitors away, and Google prefers secure sites.</p>
+    <p class="kv"><b>What to do</b> Ask your developer to set up HTTPS and forward all visitors to it.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>HTTPS and HTTP→HTTPS redirect</b> <span class="muted">(tech.https · FAIL · 1 affected · impact High · effort Med)</span></p>
+<p>Site is served over plain HTTP</p><p><b>Why:</b> HTTPS is a ranking signal and browsers flag HTTP pages as &#39;Not secure&#39;.<br><b>Fix:</b> Serve the site over HTTPS and 301-redirect every HTTP URL to its HTTPS version.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>https_probe: {error: ConnectError: [SSL: WRONG_VERSION_NUMBER] wrong version number (_ssl.c:1035), final_url: https://127.0.0.1:58769/}; https_available: False</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🔴 Language versions set up correctly</h3>
+    <p class="kv"><b>What we found</b> We found 1 page with mistakes in their language settings (out of 1 checked).</p>
+    <p class="kv"><b>Why it matters</b> Google may show the wrong language version to your visitors.</p>
+    <p class="kv"><b>What to do</b> Ask your developer to correct the language tags.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Hreflang errors</b> <span class="muted">(tech.hreflang · FAIL · 1/1 affected · impact Med · effort Med)</span></p>
+<p>Hreflang annotations have errors</p><p><b>Why:</b> Invalid hreflang annotations are ignored, so the wrong language version may rank.<br><b>Fix:</b> Use valid ISO codes, include a self-reference, make every alternate link back, and point only at 200 canonical URLs.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>problems: [{problem: No x-default alternate (recommended), severity: info}, {href: http://127.0.0.1:58769/de/, status: 404, problem: Alternate URL does not return 200, redirects: 0}]</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Addresses that forward several times</h3>
+    <p class="kv"><b>What we found</b> We found 1 page forwarding visitors through several steps (out of 1 checked).</p>
+    <p class="kv"><b>Why it matters</b> Each extra step slows visitors down; Google may give up after a few.</p>
+    <p class="kv"><b>What to do</b> Make old addresses forward straight to the final page.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Redirect chains (more than one hop)</b> <span class="muted">(tech.redirect_chains · WARNING · 1/1 affected · impact Med · effort Low)</span></p>
+<p>1 URL(s) redirect through 2+ hops</p><p><b>Why:</b> Each extra hop slows users and crawlers; long chains may not be followed.<br><b>Fix:</b> Point the first URL straight at the final destination with a single 301.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/old-page</td><td>hops: 2; chain: [{url: http://127.0.0.1:58769/old-page, status: 301, location: http://127.0.0.1:58769/old-page-2}, {url: http://127.0.0.1:58769/old-page-2, status: 301, location: http://127.0.0.1:58769/new-page}]; final_url: http://127.0.0.1:58769/new-page</td><td><pre># Apache
+Redirect 301 /old-page http://127.0.0.1:58769/new-page
+# Nginx
+location = /old-page { return 301 http://127.0.0.1:58769/new-page; }</pre></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Links to other websites that no longer work</h3>
+    <p class="kv"><b>What we found</b> We found 1 link pointing to other websites that no longer work (out of 2 checked).</p>
+    <p class="kv"><b>Why it matters</b> Dead links make a site look neglected.</p>
+    <p class="kv"><b>What to do</b> Update or remove these links.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Broken external links</b> <span class="muted">(tech.broken_external_links · WARNING · 1/2 affected · impact Low · effort Low)</span></p>
+<p>1 of 2 verified external link(s) return errors</p><p><b>Why:</b> Links to dead external pages hurt user trust and perceived page quality.<br><b>Fix:</b> Replace with a working source or remove the link.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>link: http://localhost:41099/dead; status: 404; linked_from: [http://127.0.0.1:58769/]</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Links that go through a forwarding step</h3>
+    <p class="kv"><b>What we found</b> We found 1 page linking to old addresses that forward elsewhere (out of 10 checked).</p>
+    <p class="kv"><b>Why it matters</b> It slows visitors down slightly and weakens the link.</p>
+    <p class="kv"><b>What to do</b> Point the links straight to the final address.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Internal links pointing to redirects</b> <span class="muted">(tech.links_to_redirects · WARNING · 1/10 affected · impact Low · effort Low)</span></p>
+<p>1 internal link(s) point at redirecting URLs</p><p><b>Why:</b> Linking to redirecting URLs adds latency and dilutes signals.<br><b>Fix:</b> Update internal links to the final destination URL.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>count: 1; links: [{link: http://127.0.0.1:58769/old-page, redirects_to: http://127.0.0.1:58769/new-page}]</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Pages say which address is the main one</h3>
+    <p class="kv"><b>What we found</b> We found 4 pages not telling Google which address is the main one (out of 9 checked).</p>
+    <p class="kv"><b>Why it matters</b> When a page can be opened at several addresses, Google has to guess which one to show.</p>
+    <p class="kv"><b>What to do</b> Ask your designer to add a &#39;canonical&#39; tag to each page.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Missing canonical tag</b> <span class="muted">(tech.canonical_missing · WARNING · 4/9 affected · impact Low · effort Low)</span></p>
+<p>4 page(s) have no canonical tag</p><p><b>Why:</b> Without a canonical, search engines guess the preferred URL among duplicates.<br><b>Fix:</b> Add a self-referencing &lt;link rel=&#34;canonical&#34;&gt; to every indexable page.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/js-page</td><td>canonical: (missing)</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:58769/js-page&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/new-page</td><td>canonical: (missing)</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:58769/new-page&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/js-only-target</td><td>canonical: (missing)</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:58769/js-only-target&#34;&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/orphan</td><td>canonical: (missing)</td><td><pre>&lt;link rel=&#34;canonical&#34; href=&#34;http://127.0.0.1:58769/orphan&#34;&gt;</pre></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Pages say which language they are in</h3>
+    <p class="kv"><b>What we found</b> We found 1 page not stating their language (out of 10 checked).</p>
+    <p class="kv"><b>Why it matters</b> It helps Google and screen readers handle the page correctly.</p>
+    <p class="kv"><b>What to do</b> Ask your designer to set the page language.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Missing html lang attribute</b> <span class="muted">(tech.lang · WARNING · 1/10 affected · impact Low · effort Low)</span></p>
+<p>Pages lack html lang</p><p><b>Why:</b> The lang attribute helps search engines and screen readers identify the language.<br><b>Fix:</b> Add lang to the &lt;html&gt; element, e.g. &lt;html lang=&#34;en&#34;&gt;.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>lang: (missing)</td><td><pre>&lt;html lang=&#34;en&#34;&gt;</pre></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Content visible without extra loading</h3>
+    <p class="kv"><b>What we found</b> We found 1 page whose content only appears after extra scripts run (out of 2 checked).</p>
+    <p class="kv"><b>Why it matters</b> Google reads such content later and less reliably.</p>
+    <p class="kv"><b>What to do</b> Ask your developer to make the main text and links part of the page itself.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Content that only appears after JavaScript</b> <span class="muted">(tech.js_dependent · WARNING · 1/2 affected · impact Med · effort High)</span></p>
+<p>Main content or links only appear after JavaScript runs</p><p><b>Why:</b> Content and links that need JavaScript are indexed later and less reliably.<br><b>Fix:</b> Server-side render or pre-render primary content and navigation links.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/js-page</td><td>raw_words: 0; rendered_words: 90; raw_internal_links: 0; rendered_internal_links: 1</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl (raw HTML vs headless Chromium render)</div></div></details>  </div>
+  <ul class="simple">
+    <li>🟢 <b>Conflicting main-address tags</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Your site opens at one address only</b> <span class="muted">· Looks good</span>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Duplicate URL variants (www / trailing slash)</b> <span class="muted">(tech.url_variants · PASS)</span></p>
+<p>URL variants consolidate to one version</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">—</td><td>www: {skipped: IP/localhost host}; soft_404: {probe: http://127.0.0.1:58769/seo-inspector-check-3e3c02affe58, status: 404, final_url: http://127.0.0.1:58769/seo-inspector-check-3e3c02affe58, redirects: 0, same_as_homepage: False}; trailing_slash: {page: http://127.0.0.1:58769/about, status: 200, variant: http://127.0.0.1:58769/about/, duplicate: False, final_url: http://127.0.0.1:58769/about, redirects: 1, page_canonical: http://127.0.0.1:58769/about}</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details></li>
+    <li>🟢 <b>Pages with server errors</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Pages that didn&#39;t load</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Wrong addresses show a &#39;page not found&#39; message</b> <span class="muted">· Looks good</span>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Soft 404s (missing pages return 200)</b> <span class="muted">(tech.soft_404 · PASS)</span></p>
+<p>Unknown URLs return 404</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">—</td><td>probe: http://127.0.0.1:58769/seo-inspector-check-3e3c02affe58; status: 404; final_url: http://127.0.0.1:58769/seo-inspector-check-3e3c02affe58; redirects: 0; same_as_homepage: False</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details></li>
+    <li>🟢 <b>Server answers quickly</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Page settings that change while loading</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Old-style page forwarding</b> <span class="muted">· Looks good</span>
+</li>
+    <li>⚪ <b>Secure pages loading insecure files</b> <span class="muted">· Doesn&#39;t apply: Site is not served over HTTPS (see HTTPS check)</span>
+</li>
+  </ul>
+</div>
+<div class="section" id="agent-indexing">
+  <div class="section-head"><span class="icon">🚪</span><h3>Google Access Agent</h3><span class="pill p-FAIL">1 thing to fix, 3 to improve</span></div>
+  <p class="muted" style="margin-top:0">Checks that Google is allowed into your site and has a complete list of your pages.</p>
+  <div class="card issue">
+    <h3>🔴 Page list contains only working pages</h3>
+    <p class="kv"><b>What we found</b> We found 2 addresses in your page list not opening properly (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> Listing broken or forwarded addresses makes Google trust your page list less.</p>
+    <p class="kv"><b>What to do</b> Remove broken and forwarded addresses from the sitemap.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Sitemap lists non-200 URLs</b> <span class="muted">(crawl.sitemap_bad_urls · FAIL · 2/7 affected · impact Med · effort Low)</span></p>
+<p>2 sitemap URL(s) do not return 200 directly</p><p><b>Why:</b> Listing errors and redirects in the sitemap wastes crawl budget and reduces trust in it.<br><b>Fix:</b> List only final, 200-status URLs.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/gone</td><td>status: 404</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/old-page</td><td>status: 301; severity: warning; redirects_to: http://127.0.0.1:58769/new-page</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Design files blocked from Google</h3>
+    <p class="kv"><b>What we found</b> We found 1 page whose design or script files are blocked from Google (out of 10 checked).</p>
+    <p class="kv"><b>Why it matters</b> Google may see your pages as broken or empty.</p>
+    <p class="kv"><b>What to do</b> Ask your developer to unblock these files.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>robots.txt blocks CSS/JS needed for rendering</b> <span class="muted">(crawl.robots_blocks_resources · WARNING · 1/10 affected · impact Med · effort Low)</span></p>
+<p>CSS/JS files are disallowed for Googlebot</p><p><b>Why:</b> Google renders pages; blocked CSS/JS can make pages look broken or empty to it.<br><b>Fix:</b> Allow crawling of CSS and JavaScript files.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>count: 1; blocked_resources: [http://127.0.0.1:58769/assets/blocked.js]</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: robots.txt evaluated as Googlebot</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Page list contains only pages meant for Google</h3>
+    <p class="kv"><b>What we found</b> We found 1 address in your page list hidden from Google or pointing elsewhere (out of 7 checked).</p>
+    <p class="kv"><b>Why it matters</b> Mixed signals confuse Google.</p>
+    <p class="kv"><b>What to do</b> Only list pages you want to appear in Google.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Sitemap lists noindexed, canonicalised or blocked URLs</b> <span class="muted">(crawl.sitemap_non_indexable · WARNING · 1/7 affected · impact Med · effort Low)</span></p>
+<p>Sitemap lists URLs that cannot be indexed</p><p><b>Why:</b> Sitemaps should contain only URLs you want indexed; mixed signals confuse search engines.<br><b>Fix:</b> Remove these URLs from the sitemap, or make them indexable.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/noindex-page</td><td>problem: noindex; meta_robots: noindex, follow</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 All pages are in your page list</h3>
+    <p class="kv"><b>What we found</b> We found 4 pages missing from your page list (sitemap) (out of 8 checked).</p>
+    <p class="kv"><b>Why it matters</b> Google finds pages that aren&#39;t in the list more slowly.</p>
+    <p class="kv"><b>What to do</b> Make sure the sitemap includes every page you want found.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Indexable pages missing from the sitemap</b> <span class="muted">(crawl.sitemap_missing_pages · WARNING · 4/8 affected · impact Med · effort Low)</span></p>
+<p>Indexable pages are not listed in the sitemap</p><p><b>Why:</b> Pages missing from the sitemap are discovered more slowly.<br><b>Fix:</b> Add every indexable, canonical page to the sitemap.</p><div class="muted">Ready-made fix</div><pre>&lt;url&gt;&lt;loc&gt;http://127.0.0.1:58769/blog/post-1&lt;/loc&gt;&lt;/url&gt;
+&lt;url&gt;&lt;loc&gt;http://127.0.0.1:58769/js-only-target&lt;/loc&gt;&lt;/url&gt;
+&lt;url&gt;&lt;loc&gt;http://127.0.0.1:58769/js-page&lt;/loc&gt;&lt;/url&gt;
+&lt;url&gt;&lt;loc&gt;http://127.0.0.1:58769/new-page&lt;/loc&gt;&lt;/url&gt;</pre><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>depth: 1; inlinks: 1</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/js-only-target</td><td>depth: 2; inlinks: 1</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/js-page</td><td>depth: 1; inlinks: 1</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/new-page</td><td>depth: 1; inlinks: 1</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <ul class="simple">
+    <li>🟢 <b>Important pages blocked from Google</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Google&#39;s instruction file is available</b> <span class="muted">· Looks good</span>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>robots.txt available</b> <span class="muted">(crawl.robots_txt · PASS)</span></p>
+<p>robots.txt returns 200</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/robots.txt</td><td>size: 140; status: 200</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details></li>
+    <li>🟢 <b>Your site has a page list for Google (sitemap)</b> <span class="muted">· Looks good</span>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>XML sitemap present</b> <span class="muted">(crawl.sitemap_present · PASS)</span></p>
+<p>7 URL(s) in 2 sitemap file(s)</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/sitemap.xml</td><td>kind: sitemapindex; source: robots; status: 200; url_count: 1</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/sitemap-pages.xml</td><td>kind: urlset; source: index; status: 200; url_count: 7</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details></li>
+    <li>🟢 <b>Your page list can be read</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Instruction file points to your page list</b> <span class="muted">· Looks good</span>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>robots.txt references the sitemap</b> <span class="muted">(crawl.robots_sitemap_directive · PASS)</span></p>
+<p>1 Sitemap: line(s) found</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">—</td><td>sitemaps: [http://127.0.0.1:58769/sitemap.xml]</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details></li>
+    <li>🟢 <b>Many links to pages hidden from Google</b> <span class="muted">· Looks good</span>
+</li>
+    <li>⚪ <b>Which pages Google has actually listed</b> <span class="muted">· Couldn&#39;t check: Needs access to your Google Search Console account (a free Google tool). Your developer can connect it.</span>
+</li>
+    <li>⚪ <b>Google&#39;s view of your key pages</b> <span class="muted">· Couldn&#39;t check: Needs access to your Google Search Console account (a free Google tool). Your developer can connect it.</span>
+</li>
+  </ul>
+</div>
+<div class="section" id="agent-performance">
+  <div class="section-head"><span class="icon">⚡</span><h3>Speed Agent</h3><span class="pill p-NOT_CHECKED">Couldn&#39;t check this time</span></div>
+  <p class="muted" style="margin-top:0">Measures how fast your site loads and responds, especially on mobile phones.</p>
+  <ul class="simple">
+    <li>⚪ <b>Page stays still while loading</b> <span class="muted">· Couldn&#39;t check: Needs Google&#39;s free speed-test service to be set up in Settings.</span>
+</li>
+    <li>⚪ <b>How fast the main content appears</b> <span class="muted">· Couldn&#39;t check: Needs Google&#39;s free speed-test service to be set up in Settings.</span>
+</li>
+    <li>⚪ <b>How quickly the page reacts to taps and clicks</b> <span class="muted">· Couldn&#39;t check: Needs Google&#39;s free speed-test service to be set up in Settings.</span>
+</li>
+    <li>⚪ <b>Page isn&#39;t frozen while loading</b> <span class="muted">· Couldn&#39;t check: Needs Google&#39;s free speed-test service to be set up in Settings.</span>
+</li>
+    <li>⚪ <b>Google&#39;s overall speed score</b> <span class="muted">· Couldn&#39;t check: Needs Google&#39;s free speed-test service to be set up in Settings.</span>
+</li>
+    <li>⚪ <b>Biggest speed improvements available</b> <span class="muted">· Couldn&#39;t check: Needs Google&#39;s free speed-test service to be set up in Settings.</span>
+</li>
+  </ul>
+</div>
+<div class="section" id="agent-schema">
+  <div class="section-head"><span class="icon">🏷️</span><h3>Google Labels Agent</h3><span class="pill p-WARNING">1 thing to improve</span></div>
+  <p class="muted" style="margin-top:0">Checks for hidden labels that tell Google what each page is: your company, a product, an article or a video.</p>
+  <div class="card issue">
+    <h3>🟠 Pages labelled for Google</h3>
+    <p class="kv"><b>What we found</b> We found 2 pages without the hidden labels that tell Google what they are (out of 9 checked).</p>
+    <p class="kv"><b>Why it matters</b> Labels such as &#39;company&#39;, &#39;product&#39; or &#39;article&#39; help Google show richer results (logo, contact details, products).</p>
+    <p class="kv"><b>What to do</b> Ask your designer to add structured data. Ready-made code is in the technical details.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Schema missing for the page type</b> <span class="muted">(schema.missing_types · WARNING · 2/9 affected · impact Med · effort Low)</span></p>
+<p>3 missing schema item(s) on 2 page(s); 0 of 9 pages have any structured data</p><p><b>Why:</b> Matching schema (Organization, Product, Article, Breadcrumb, Video…) enables rich results and helps search engines and AI assistants understand each page.<br><b>Fix:</b> Add the generated JSON-LD to the page (fill any fields listed under needs_input).</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>missing_type: Organization; detected_because: homepage</td><td><pre>&lt;script type=&#34;application/ld+json&#34;&gt;
+{
+  &#34;@context&#34;: &#34;https://schema.org&#34;,
+  &#34;@type&#34;: &#34;Organization&#34;,
+  &#34;name&#34;: &#34;Acme Widgets&#34;,
+  &#34;url&#34;: &#34;http://127.0.0.1:58769/&#34;,
+  &#34;logo&#34;: &#34;http://127.0.0.1:58769/img/logo.png&#34;,
+  &#34;description&#34;: &#34;Acme Widgets makes durable, precise widgets for workshops, factories and homes. Browse products, read guides and get support.&#34;
+}
+&lt;/script&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/</td><td>missing_type: WebSite; detected_because: homepage</td><td><pre>&lt;script type=&#34;application/ld+json&#34;&gt;
+{
+  &#34;@context&#34;: &#34;https://schema.org&#34;,
+  &#34;@type&#34;: &#34;WebSite&#34;,
+  &#34;name&#34;: &#34;Acme Widgets&#34;,
+  &#34;url&#34;: &#34;http://127.0.0.1:58769/&#34;
+}
+&lt;/script&gt;</pre></td></tr><tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>missing_type: BreadcrumbList; detected_because: nested URL path</td><td><pre>&lt;script type=&#34;application/ld+json&#34;&gt;
+{
+  &#34;@context&#34;: &#34;https://schema.org&#34;,
+  &#34;@type&#34;: &#34;BreadcrumbList&#34;,
+  &#34;itemListElement&#34;: [
+    {
+      &#34;@type&#34;: &#34;ListItem&#34;,
+      &#34;position&#34;: 1,
+      &#34;name&#34;: &#34;Home&#34;,
+      &#34;item&#34;: &#34;http://127.0.0.1:58769/&#34;
+    },
+    {
+      &#34;@type&#34;: &#34;ListItem&#34;,
+      &#34;position&#34;: 2,
+      &#34;name&#34;: &#34;Guide&#34;,
+      &#34;item&#34;: &#34;http://127.0.0.1:58769/blog/post-1&#34;
+    }
+  ]
+}
+&lt;/script&gt;</pre></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <ul class="simple">
+    <li>🟢 <b>Google labels written correctly</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Google labels complete</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Google labels that agree with each other</b> <span class="muted">· Looks good</span>
+</li>
+    <li>🟢 <b>Google labels with all useful details</b> <span class="muted">· Looks good</span>
+</li>
+  </ul>
+</div>
+<div class="section" id="agent-backlinks">
+  <div class="section-head"><span class="icon">🔗</span><h3>Link Votes Agent</h3><span class="pill p-NOT_CHECKED">Couldn&#39;t check this time</span></div>
+  <p class="muted" style="margin-top:0">Finds other websites that link to you. Google treats each of these links as a vote of trust.</p>
+  <ul class="simple">
+    <li>⚪ <b>Spammy websites linking to you</b> <span class="muted">· Couldn&#39;t check: Needs the web search service to be set up in Settings.</span>
+</li>
+    <li>⚪ <b>How trusted your website is on the web</b> <span class="muted">· Couldn&#39;t check: Needs the full list of linking websites, which comes from a periodic data import.</span>
+</li>
+    <li>⚪ <b>Websites we found linking to you</b> <span class="muted">· Couldn&#39;t check: Needs the web search service to be set up in Settings.</span>
+</li>
+    <li>⚪ <b>Full list of websites linking to you</b> <span class="muted">· Couldn&#39;t check: Needs the full list of linking websites, which comes from a periodic data import.</span>
+</li>
+    <li>⚪ <b>Websites that link to competitors but not to you</b> <span class="muted">· Doesn&#39;t apply: No competitor URLs were provided with the audit</span>
+</li>
+  </ul>
+</div>
+<div class="section" id="agent-outreach">
+  <div class="section-head"><span class="icon">✉️</span><h3>Outreach Agent</h3><span class="pill p-NOT_CHECKED">Couldn&#39;t check this time</span></div>
+  <p class="muted" style="margin-top:0">Finds websites that might link to you and drafts emails you can send. Nothing is ever sent automatically.</p>
+  <ul class="simple">
+    <li>⚪ <b>Websites worth contacting for a link</b> <span class="muted">· Couldn&#39;t check: Needs the web search service to be set up in Settings.</span>
+</li>
+    <li>⚪ <b>Email drafts ready for you</b> <span class="muted">· Couldn&#39;t check: Needs the web search service to be set up in Settings.</span>
+</li>
+  </ul>
+</div>
+<div class="section" id="agent-brand_mentions">
+  <div class="section-head"><span class="icon">📣</span><h3>Reputation Agent</h3><span class="pill p-NOT_CHECKED">Couldn&#39;t check this time</span></div>
+  <p class="muted" style="margin-top:0">Looks for where your business is talked about online and what people say about it.</p>
+  <ul class="simple">
+    <li>⚪ <b>Websites that mention you without a link</b> <span class="muted">· Couldn&#39;t check: Needs the web search service to be set up in Settings.</span>
+</li>
+    <li>⚪ <b>What people say about you in public reviews</b> <span class="muted">· Couldn&#39;t check: Needs the web search service to be set up in Settings.</span>
+</li>
+    <li>⚪ <b>How often you&#39;re mentioned compared with competitors</b> <span class="muted">· Couldn&#39;t check: Needs the web search service to be set up in Settings.</span>
+</li>
+  </ul>
+</div>
+<div class="section" id="agent-gbp">
+  <div class="section-head"><span class="icon">📍</span><h3>Google Maps Agent</h3><span class="pill p-NA">Coming in a later update</span></div>
+  <p class="muted" style="margin-top:0">Will check your Google Business Profile, the listing people see on Google Maps.</p>
+  <p class="muted">This agent is still being built and will join in a later update.</p>
+</div>
+<div class="section" id="agent-citations">
+  <div class="section-head"><span class="icon">📒</span><h3>Directory Listings Agent</h3><span class="pill p-NA">Coming in a later update</span></div>
+  <p class="muted" style="margin-top:0">Will check that your name, address and phone number are the same on every online directory.</p>
+  <p class="muted">This agent is still being built and will join in a later update.</p>
+</div>
+<div class="section" id="agent-reviews">
+  <div class="section-head"><span class="icon">⭐</span><h3>Reviews Agent</h3><span class="pill p-NA">Coming in a later update</span></div>
+  <p class="muted" style="margin-top:0">Will track your customer reviews and help you reply to them.</p>
+  <p class="muted">This agent is still being built and will join in a later update.</p>
+</div>
+<div class="section" id="agent-ai_visibility">
+  <div class="section-head"><span class="icon">🤖</span><h3>AI Assistant Agent</h3><span class="pill p-WARNING">2 things to improve</span></div>
+  <p class="muted" style="margin-top:0">Checks whether ChatGPT, Claude and other AI assistants can read your site and recommend you.</p>
+  <div class="card issue">
+    <h3>🟠 AI assistants are allowed to read your site</h3>
+    <p class="kv"><b>What we found</b> Your site blocks some AI assistants from reading it.</p>
+    <p class="kv"><b>Why it matters</b> If ChatGPT, Claude or Perplexity can&#39;t read your site, they can&#39;t recommend you.</p>
+    <p class="kv"><b>What to do</b> Ask your developer to allow AI crawlers in robots.txt.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>AI crawlers allowed in robots.txt</b> <span class="muted">(ai.crawler_access · WARNING · 1/5 affected · impact Med · effort Low)</span></p>
+<p>Blocked: GPTBot</p><p><b>Why:</b> Blocking AI crawlers (GPTBot, ClaudeBot, PerplexityBot…) keeps your content out of their answers and citations. Google-Extended only affects Gemini training, not Google Search.<br><b>Fix:</b> Allow the AI crawlers you want to be visible in (or keep blocks you chose deliberately).</p><div class="muted">Ready-made fix</div><pre>User-agent: GPTBot
+Allow: /
+</pre><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/robots.txt</td><td>bot: GPTBot; allowed: False; disallow: [/]; specific_rule: True</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/robots.txt</td><td>bot: ClaudeBot; allowed: True; disallow: [/private/, /assets/blocked.js]; specific_rule: False</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/robots.txt</td><td>bot: PerplexityBot; allowed: True; disallow: [/private/, /assets/blocked.js]; specific_rule: False</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/robots.txt</td><td>bot: Google-Extended; allowed: True; disallow: [/private/, /assets/blocked.js]; specific_rule: False</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/robots.txt</td><td>bot: CCBot; allowed: True; disallow: [/private/, /assets/blocked.js]; specific_rule: False</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: robots.txt</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 A guide file for AI assistants</h3>
+    <p class="kv"><b>What we found</b> Your site has no llms.txt guide for AI assistants.</p>
+    <p class="kv"><b>Why it matters</b> It&#39;s a new, optional file that points AI tools to your most important pages.</p>
+    <p class="kv"><b>What to do</b> Optional: add an llms.txt file. A draft is in the technical details.</p>
+    <div class="who">👤 Who can do it: Your web designer or developer</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>llms.txt file</b> <span class="muted">(ai.llms_txt · WARNING · 1 affected · impact Low · effort Low)</span></p>
+<p>No llms.txt at the site root</p><p><b>Why:</b> llms.txt is an emerging convention that gives AI tools a curated map of your key content.<br><b>Fix:</b> Publish /llms.txt (a draft is generated below).</p><div class="muted">Ready-made fix</div><pre># Acme Widgets
 
-<h2>Not checked</h2>
-<table><thead><tr><th>Check</th><th>Reason</th></tr></thead><tbody>
-<tr><td>1. Keyword Research &amp; Mapping: Keyword Research &amp; Mapping</td><td>This module is not built yet (planned for build phase 3)</td></tr><tr><td>2. Content Optimization: Content Optimization</td><td>This module is not built yet (planned for build phase 3)</td></tr><tr><td>3. Meta Tags: Primary keyword present in title</td><td>Needs the keyword map and LLM layer (Keyword Research module), which is not built yet</td></tr><tr><td>3. Meta Tags: Title/description match search intent</td><td>Needs the keyword map and LLM layer (Keyword Research module), which is not built yet</td></tr><tr><td>4. Internal Linking: Internal Linking</td><td>This module is not built yet (planned for build phase 2)</td></tr><tr><td>5. Image SEO: AI-generated alt text suggestions</td><td>Vision-model alt text is part of the LLM layer, which is not built yet</td></tr><tr><td>7. Crawling &amp; Indexing: Indexed vs not-indexed pages (Search Console)</td><td>Requires Google Search Console access. Setup: create a Google Cloud service account, add its e-mail as a user on the Search Console property, and save the JSON key as the GSC_SERVICE_ACCOUNT_JSON secret.</td></tr><tr><td>7. Crawling &amp; Indexing: URL Inspection for key pages (Search Console)</td><td>Requires Google Search Console access. Setup: create a Google Cloud service account, add its e-mail as a user on the Search Console property, and save the JSON key as the GSC_SERVICE_ACCOUNT_JSON secret.</td></tr><tr><td>8. Website Performance: Website Performance</td><td>This module is not built yet (planned for build phase 2)</td></tr><tr><td>9. Schema Markup: Schema Markup</td><td>This module is not built yet (planned for build phase 2)</td></tr><tr><td>10. Backlink Analysis: Backlink Analysis</td><td>This module is not built yet (planned for build phase 4)</td></tr><tr><td>11. Link Building &amp; Outreach: Link Building &amp; Outreach</td><td>This module is not built yet (planned for build phase 4)</td></tr><tr><td>12. Brand Mentions &amp; Reputation: Brand Mentions &amp; Reputation</td><td>This module is not built yet (planned for build phase 4)</td></tr><tr><td>13. Google Business Profile: Google Business Profile</td><td>This module is not built yet (planned for build phase 5)</td></tr><tr><td>14. Citations &amp; NAP: Citations &amp; NAP</td><td>This module is not built yet (planned for build phase 5)</td></tr><tr><td>15. Review Management: Review Management</td><td>This module is not built yet (planned for build phase 5)</td></tr><tr><td>16. AI Search Visibility: AI Search Visibility</td><td>This module is not built yet (planned for build phase 4)</td></tr><tr><td>17. GEO Content Optimization: GEO Content Optimization</td><td>This module is not built yet (planned for build phase 3)</td></tr></tbody></table>
+&gt; Acme Widgets makes durable, precise widgets for workshops, factories and homes. Browse products, read guides and get support.
 
-<h2>Crawl details</h2>
+## Key pages
+- [Acme Widgets – Durable Widgets for Every Workshop](http://127.0.0.1:58769/): Acme Widgets makes durable, precise widgets for workshops, factories and homes. Browse products, read guides and get support.
+- [About Acme Widgets | Acme](http://127.0.0.1:58769/about)
+- [The Complete and Extremely Detailed Guide to Choosing, Installing and Maintaining Industrial Widgets in 2026](http://127.0.0.1:58769/blog/post-1): Short.
+- [Widget configurator](http://127.0.0.1:58769/js-page): Configure your widget online with the Acme configurator. Pick size, finish and options, then order.
+- [New page after redirects – Acme Widgets](http://127.0.0.1:58769/new-page): This page is the final destination of a redirect chain used in the SEO Inspector test site.
+- [Products – Acme Widgets catalogue and prices](http://127.0.0.1:58769/products): Acme Widgets makes durable, precise widgets for workshops, factories and homes. Browse products, read guides and get support.
+- [Configured widgets gallery – Acme Widgets](http://127.0.0.1:58769/js-only-target): A gallery of widgets configured by Acme customers, with sizes, finishes and options.
+- [About Acme Widgets | Acme](http://127.0.0.1:58769/orphan): An orphan page that is listed in the sitemap but not linked from anywhere on the site.
+</pre><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/llms.txt</td><td>status: 404</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <ul class="simple">
+    <li>⚪ <b>Do AI assistants recommend you?</b> <span class="muted">· Couldn&#39;t check: Needs the AI assistant to be switched on in Settings.</span>
+</li>
+  </ul>
+</div>
+<div class="section" id="agent-geo_content">
+  <div class="section-head"><span class="icon">💬</span><h3>AI Answers Agent</h3><span class="pill p-WARNING">3 things to improve</span></div>
+  <p class="muted" style="margin-top:0">Checks that your pages are written so AI assistants can easily quote them in their answers.</p>
+  <div class="card issue">
+    <h3>🟠 Questions &amp; answers section on key pages</h3>
+    <p class="kv"><b>What we found</b> We found 2 pages among your key pages without a questions &amp; answers section (out of 2 checked).</p>
+    <p class="kv"><b>Why it matters</b> Short Q&amp;As are one of the formats AI assistants quote most.</p>
+    <p class="kv"><b>What to do</b> Add an FAQ to key pages. Draft questions are in the technical details.</p>
+    <div class="who">👤 Who can do it: You, or whoever writes your website text</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>FAQ section on key pages</b> <span class="muted">(geo.faq · WARNING · 2/2 affected · impact Med · effort Low)</span></p>
+<p>Key pages without an FAQ section</p><p><b>Why:</b> Concise Q&amp;A blocks are among the most quoted formats in AI answers.<br><b>Fix:</b> Add a short FAQ section (AI drafts are attached where available; verify the answers).</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>question_headings: 0</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>question_headings: 0</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Articles show who wrote them and when</h3>
+    <p class="kv"><b>What we found</b> We found 1 page with an article but no author name or date (out of 1 checked).</p>
+    <p class="kv"><b>Why it matters</b> Google and AI assistants trust content more when they know who wrote it and when.</p>
+    <p class="kv"><b>What to do</b> Show the author&#39;s name and the publish date on each article.</p>
+    <div class="who">👤 Who can do it: You, or whoever writes your website text</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Author bylines and dates on articles</b> <span class="muted">(geo.authorship · WARNING · 1/1 affected · impact Med · effort Low)</span></p>
+<p>Articles missing author or date signals</p><p><b>Why:</b> Named authors and visible publish/update dates are E-E-A-T signals AI systems weigh.<br><b>Fix:</b> Show author name (linked to a bio) and published/updated dates on every article.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>missing: [author byline, machine-readable publish date, last-updated date]</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <div class="card issue">
+    <h3>🟠 Signs that a real, trustworthy business is behind the site</h3>
+    <p class="kv"><b>What we found</b> The site is missing some trust signals (such as an About page, contact details or a privacy policy).</p>
+    <p class="kv"><b>Why it matters</b> Visitors, Google and AI assistants trust sites more when they can see who runs them.</p>
+    <p class="kv"><b>What to do</b> Add the missing pages and show your phone number and address on the homepage.</p>
+    <div class="who">👤 Who can do it: You, or whoever writes your website text</div>
+<details class="tech"><summary>Technical details for your web developer</summary><div class="body">
+<p><b>Site trust signals (about, contact, policies, profiles)</b> <span class="muted">(geo.eeat_site · WARNING · 5 affected · impact Med · effort Low)</span></p>
+<p>Missing: contact page, privacy page, Organization schema, links to official social profiles, visible phone or address on the homepage</p><p><b>Why:</b> About/contact pages, policies and consistent profiles help search engines and AI trust the source.<br><b>Fix:</b> Add the missing pages/signals listed in the evidence.</p><div class="scroll"><table><thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead><tbody>
+<tr><td class="url">—</td><td>found: {about: [http://127.0.0.1:58769/about, http://127.0.0.1:58769/team]}; missing: [contact page, privacy page, Organization schema, links to official social profiles, visible phone or address on the homepage]; social_profiles: 0</td><td></td></tr></tbody></table></div>
+<div class="muted">Source: Crawl</div></div></details>  </div>
+  <ul class="simple">
+    <li>⚪ <b>Pages answer the main question straight away</b> <span class="muted">· Couldn&#39;t check: Needs the AI assistant to be switched on in Settings.</span>
+</li>
+    <li>⚪ <b>Headings written as questions</b> <span class="muted">· Doesn&#39;t apply: Nothing to evaluate on this site</span>
+</li>
+    <li>⚪ <b>Facts and figures with sources</b> <span class="muted">· Doesn&#39;t apply: Nothing to evaluate on this site</span>
+</li>
+  </ul>
+</div>
+
+<h2>Words you might see</h2>
+<dl class="glossary">
+  <dt>Google headline (title)</dt><dd>The blue clickable text for your page in Google results.</dd>
+  <dt>Google summary (meta description)</dt><dd>The short grey text under the headline in Google results.</dd>
+  <dt>Main heading (H1)</dt><dd>The biggest heading on the page itself, saying what the page is about.</dd>
+  <dt>Page list (sitemap)</dt><dd>A file listing all your pages so Google can find them quickly.</dd>
+  <dt>Image description (alt text)</dt><dd>Hidden text describing a picture, read by Google and by screen readers for blind visitors.</dd>
+  <dt>Google labels (structured data)</dt><dd>Hidden information that tells Google what a page is: your company, a product, an article.</dd>
+  <dt>Link votes (backlinks)</dt><dd>Links to your site from other websites. Google treats them as votes of trust.</dd>
+  <dt>Search phrase (keyword)</dt><dd>The words people type into Google, e.g. "go kart manufacturer india".</dd>
+</dl>
+
+<h2>For your web developer</h2>
+<p class="lead">Technical details of how the check-up was done. Each finding above also has a "Technical details" link with the exact pages and ready-made fixes. A CSV/JSON export is available from the dashboard.</p>
+<details class="tech"><summary>Crawl details</summary><div class="body">
 <table><tbody>
-<tr><th>Start URL</th><td>http://127.0.0.1:8765/</td></tr>
-<tr><th>Pages fetched</th><td>13 (limit 100) · rendered with JS: 2 · 24.0 s</td></tr>
-<tr><th>robots.txt</th><td>HTTP 200 · Sitemap lines: http://127.0.0.1:8765/sitemap.xml</td></tr>
-<tr><th>Sitemaps</th><td>http://127.0.0.1:8765/sitemap.xml (200, 1 URLs)<br>http://127.0.0.1:8765/sitemap-pages.xml (200, 7 URLs)<br></td></tr>
+<tr><th>Start URL</th><td>http://127.0.0.1:58769/</td></tr>
+<tr><th>Pages fetched</th><td>13 (limit 100) · rendered with JS: 2 · 17.3 s</td></tr>
+<tr><th>robots.txt</th><td>HTTP 200 · Sitemap lines: http://127.0.0.1:58769/sitemap.xml</td></tr>
+<tr><th>Sitemaps</th><td>http://127.0.0.1:58769/sitemap.xml (200, 1 URLs)<br>http://127.0.0.1:58769/sitemap-pages.xml (200, 7 URLs)<br></td></tr>
 <tr><th>llms.txt</th><td>not found (HTTP 404)</td></tr>
 <tr><th>AI crawlers</th><td>CCBot: allowed<br>GPTBot: blocked (specific rule)<br>ClaudeBot: allowed<br>PerplexityBot: allowed<br>Google-Extended: allowed<br></td></tr>
 <tr><th>JavaScript site</th><td>no</td></tr>
-</tbody></table>
-
-<h2>Pages (14)</h2>
+<tr><th>Scores by category</th><td>Technical: 76.0 (coverage 89.6%)<br>On-page: 75.6 (coverage 69.1%)<br>Performance: – (coverage 0.0%)<br>Schema: 95.3 (coverage 100.0%)<br>Off-page: – (coverage 0.0%)<br>Local: – (coverage 0.0%)<br>AI Search &amp; GEO: 56.1 (coverage 58.3%)<br></td></tr>
+<tr><th>Generated by</th><td>SEO Inspector 0.1.0 · audit #1 · 2026-11-07T19:15:20+00:00</td></tr>
+</tbody></table></div></details>
+<details class="tech"><summary>All pages (14)</summary><div class="body scroll">
 <table><thead><tr><th>URL</th><th>Status</th><th>Depth</th><th>Inlinks</th><th>Words</th><th>Indexable</th><th>Title</th></tr></thead><tbody>
-<tr><td class="url">http://127.0.0.1:8765/</td><td>200</td><td>0</td><td>4</td><td>105</td><td>yes</td><td>Acme Widgets – Durable Widgets for Every Workshop</td></tr><tr><td class="url">http://127.0.0.1:8765/about</td><td>200</td><td>1</td><td>3</td><td>60</td><td>yes</td><td>About Acme Widgets | Acme</td></tr><tr><td class="url">http://127.0.0.1:8765/blog/post-1</td><td>200</td><td>1</td><td>1</td><td>120</td><td>yes</td><td>The Complete and Extremely Detailed Guide to Choosing, Installing and Maintaining Industrial Widgets in 2026</td></tr><tr><td class="url">http://127.0.0.1:8765/js-page</td><td>200</td><td>1</td><td>1</td><td>90</td><td>yes</td><td>Widget configurator</td></tr><tr><td class="url">http://127.0.0.1:8765/loop-a</td><td>301</td><td>1</td><td>1</td><td></td><td>no</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/missing</td><td>404</td><td>1</td><td>1</td><td></td><td>no</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/new-page</td><td>200</td><td>1</td><td>1</td><td>30</td><td>yes</td><td>New page after redirects – Acme Widgets</td></tr><tr><td class="url">http://127.0.0.1:8765/noindex-page</td><td>200</td><td>1</td><td>1</td><td>30</td><td>no</td><td>Hidden page for testing</td></tr><tr><td class="url">http://127.0.0.1:8765/old-page</td><td>301</td><td>1</td><td>1</td><td></td><td>no</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/products</td><td>200</td><td>1</td><td>1</td><td>61</td><td>yes</td><td>Products – Acme Widgets catalogue and prices</td></tr><tr><td class="url">http://127.0.0.1:8765/team</td><td>200</td><td>1</td><td>1</td><td>33</td><td>no</td><td>About Acme Widgets | Acme</td></tr><tr><td class="url">http://127.0.0.1:8765/js-only-target</td><td>200</td><td>2</td><td>1</td><td>30</td><td>yes</td><td>Configured widgets gallery – Acme Widgets</td></tr><tr><td class="url">http://127.0.0.1:8765/gone</td><td>404</td><td>—</td><td>0</td><td></td><td>no</td><td></td></tr><tr><td class="url">http://127.0.0.1:8765/orphan</td><td>200</td><td>—</td><td>0</td><td>30</td><td>yes</td><td>About Acme Widgets | Acme</td></tr></tbody></table>
+<tr><td class="url">http://127.0.0.1:58769/</td><td>200</td><td>0</td><td>4</td><td>105</td><td>yes</td><td>Acme Widgets – Durable Widgets for Every Workshop</td></tr><tr><td class="url">http://127.0.0.1:58769/about</td><td>200</td><td>1</td><td>3</td><td>60</td><td>yes</td><td>About Acme Widgets | Acme</td></tr><tr><td class="url">http://127.0.0.1:58769/blog/post-1</td><td>200</td><td>1</td><td>1</td><td>120</td><td>yes</td><td>The Complete and Extremely Detailed Guide to Choosing, Installing and Maintaining Industrial Widgets in 2026</td></tr><tr><td class="url">http://127.0.0.1:58769/js-page</td><td>200</td><td>1</td><td>1</td><td>90</td><td>yes</td><td>Widget configurator</td></tr><tr><td class="url">http://127.0.0.1:58769/loop-a</td><td>301</td><td>1</td><td>1</td><td></td><td>no</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/missing</td><td>404</td><td>1</td><td>1</td><td></td><td>no</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/new-page</td><td>200</td><td>1</td><td>1</td><td>30</td><td>yes</td><td>New page after redirects – Acme Widgets</td></tr><tr><td class="url">http://127.0.0.1:58769/noindex-page</td><td>200</td><td>1</td><td>1</td><td>30</td><td>no</td><td>Hidden page for testing</td></tr><tr><td class="url">http://127.0.0.1:58769/old-page</td><td>301</td><td>1</td><td>1</td><td></td><td>no</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/products</td><td>200</td><td>1</td><td>1</td><td>61</td><td>yes</td><td>Products – Acme Widgets catalogue and prices</td></tr><tr><td class="url">http://127.0.0.1:58769/team</td><td>200</td><td>1</td><td>1</td><td>33</td><td>no</td><td>About Acme Widgets | Acme</td></tr><tr><td class="url">http://127.0.0.1:58769/js-only-target</td><td>200</td><td>2</td><td>1</td><td>30</td><td>yes</td><td>Configured widgets gallery – Acme Widgets</td></tr><tr><td class="url">http://127.0.0.1:58769/gone</td><td>404</td><td>—</td><td>0</td><td></td><td>no</td><td></td></tr><tr><td class="url">http://127.0.0.1:58769/orphan</td><td>200</td><td>—</td><td>0</td><td>30</td><td>yes</td><td>About Acme Widgets | Acme</td></tr></tbody></table></div></details>
+
 </div></body></html>

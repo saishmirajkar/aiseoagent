@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, CATEGORY_LABELS, Finding, fixCode, fmtEvidence, post } from "../api";
+import { Agent, api, Finding, fixCode, fmtEvidence, post } from "../api";
 
 const RUNNING = ["queued", "running", "cancel_requested"];
 
 export default function AuditView({ id }: { id: number }) {
   const [a, setA] = useState<any>(null);
   const [err, setErr] = useState("");
-  const [tab, setTab] = useState<"overview" | "findings" | "pages">("overview");
+  const [tab, setTab] = useState<"summary" | "agents" | "pages">("summary");
+  const [agent, setAgent] = useState("");
 
   useEffect(() => {
     let stop = false;
@@ -52,14 +53,14 @@ export default function AuditView({ id }: { id: number }) {
       {a.status === "completed" && (
         <>
           <div className="tabs">
-            {(["overview", "findings", "pages"] as const).map((t) => (
-              <button key={t} className={tab === t ? "active" : ""} onClick={() => setTab(t)}>
-                {t[0].toUpperCase() + t.slice(1)}
+            {([["summary", "Summary"], ["agents", "What each agent found"], ["pages", "Pages"]] as const).map(([t, label]) => (
+              <button key={t} className={tab === t ? "active" : ""} onClick={() => { setTab(t); setAgent(""); }}>
+                {label}
               </button>
             ))}
           </div>
-          {tab === "overview" && <Overview a={a} onShowFindings={() => setTab("findings")} />}
-          {tab === "findings" && <Findings auditId={id} />}
+          {tab === "summary" && <Overview a={a} onAgent={(k) => { setAgent(k); setTab("agents"); }} />}
+          {tab === "agents" && <Findings auditId={id} agents={a.agents || []} agent={agent} setAgent={setAgent} />}
           {tab === "pages" && <Pages auditId={id} />}
         </>
       )}
@@ -99,110 +100,133 @@ function Progress({ a }: { a: any }) {
   );
 }
 
-function Overview({ a, onShowFindings }: { a: any; onShowFindings: () => void }) {
-  const cats = (a.scores?.categories || {}) as Record<string, any>;
-  const counts = a.summary?.status_counts || {};
+function Overview({ a, onAgent }: { a: any; onAgent: (key: string) => void }) {
+  const plain = a.plain || {};
   return (
     <>
-      <div className="cards">
-        <div className="card score-card">
-          <div className="label">Overall</div>
-          <div className="score">{a.scores?.overall ?? "–"}</div>
+      <div className="card hero">
+        <div className="big">{a.scores?.overall ?? "–"}<small> / 100</small></div>
+        <div>
+          <div className="grade">{plain.grade?.label}</div>
+          <div>{plain.grade?.sentence}</div>
+          <div className="muted small">
+            {plain.counts_sentence}
+            {a.coverage != null && a.coverage < 100 && ` We could test ${a.coverage}% of what we look at; the rest needs extra access.`}
+          </div>
+          <div className="legend"><span>🔴 Needs fixing</span><span>🟠 Could be better</span><span>🟢 Looks good</span><span>⚪ Couldn't check</span></div>
         </div>
-        <div className="card score-card">
-          <div className="label">Coverage</div>
-          <div className="score">{a.coverage ?? 0}%</div>
-          <div className="small muted">of the audit actually measured</div>
-        </div>
-        {Object.keys(CATEGORY_LABELS).filter((k) => cats[k]).map((k) => [k, cats[k]] as [string, any]).map(([k, c]) => (
-          <div className="card score-card" key={k}>
-            <div className="label">{CATEGORY_LABELS[k] || k}</div>
-            <div className="score">{c.score ?? "–"}</div>
-            <div className="small muted">coverage {c.coverage}%</div>
+      </div>
+      <p className="muted small">
+        The score is like a health check: how many checks your site passed, weighted by how much each one matters.
+        It is not your position in Google.
+      </p>
+
+      <h2>Meet your agents</h2>
+      <div className="agents">
+        {(a.agents || []).map((ag: Agent) => (
+          <div key={ag.key} className={`card agent t-${ag.tone} clickable`} onClick={() => onAgent(ag.key)}>
+            <b><span className="aicon">{ag.icon}</span>{ag.name}</b>
+            <div className="muted small">{ag.job}</div>
+            <span className={`pill p-${ag.tone}`}>{ag.verdict}</span>
           </div>
         ))}
       </div>
-      <p className="muted small">
-        {Object.entries(counts).map(([k, v]) => <span key={k} className={`badge s-${k.replace("/", "")}`}>{k} {String(v)}</span>)}
-        {" "}NOT_CHECKED items are excluded from scores and reduce coverage instead.
-      </p>
 
-      <h2>Missing on this site</h2>
-      {a.missing?.length ? <ul className="missing">{a.missing.map((m: string) => <li key={m}>{m}</li>)}</ul>
-        : <p className="muted">Nothing essential missing among the checks run.</p>}
-
-      <h2>Top 10 fixes</h2>
+      <h2>Fix these first</h2>
       {a.top_fixes?.length ? (
-        <ol className="top">
+        <ol className="fixes">
           {a.top_fixes.map((f: Finding) => (
-            <li key={f.id}>
-              <span className={`badge s-${f.status}`}>{f.status}</span> <b>{f.title}</b>
-              <span className="muted"> · {f.affected}{f.total ? `/${f.total}` : ""} affected · impact {f.impact} · effort {f.effort}</span>
-              <div className="muted">{f.summary}</div>
-              <div>{f.fix}</div>
-            </li>
+            <li key={f.id} className="card"><PlainBody f={f} showAgent /></li>
           ))}
         </ol>
-      ) : <p className="muted">No issues found.</p>}
-      <button className="link" onClick={onShowFindings}>See all findings →</button>
+      ) : <p className="muted">Nothing urgent. Well done!</p>}
       <p className="muted small">
-        API usage for this audit: ${a.cost?.total_usd ?? 0} total · ${a.cost?.llm_usd ?? 0} LLM · {a.cost?.search_queries ?? 0} search
-        queries · {a.cost?.pagespeed_calls ?? 0} PageSpeed calls (free; cached results not counted).
+        API usage for this audit: ${a.cost?.total_usd ?? 0} total · ${a.cost?.llm_usd ?? 0} AI · {a.cost?.search_queries ?? 0} web
+        searches · {a.cost?.pagespeed_calls ?? 0} speed tests (free; cached results not counted).
       </p>
     </>
   );
 }
 
+function PlainBody({ f, showAgent = false }: { f: Finding; showAgent?: boolean }) {
+  const problem = f.status === "FAIL" || f.status === "WARNING";
+  return (
+    <>
+      <b>{f.plain_icon} {f.plain_title || f.title}</b>
+      {showAgent && <div className="muted small">{f.agent_icon} {f.agent} · {f.plain_status}</div>}
+      <div className="kv"><b>What we found</b><span>{f.plain_found || f.summary}</span></div>
+      {problem && <div className="kv"><b>Why it matters</b><span>{f.plain_why || f.why}</span></div>}
+      {problem && <div className="kv"><b>What to do</b><span>{f.plain_do || f.fix}</span></div>}
+      {problem && f.plain_who && <div className="muted small">👤 Who can do it: {f.plain_who}</div>}
+    </>
+  );
+}
+
 export function FindingRow({ f, open: initial = false }: { f: Finding; open?: boolean }) {
-  const [open, setOpen] = useState(initial);
+  const [tech, setTech] = useState(initial && !f.plain_title);
+  const problem = f.status === "FAIL" || f.status === "WARNING";
   return (
     <div className="finding">
-      <div className="fhead clickable" onClick={() => setOpen(!open)}>
-        <span className={`badge s-${f.status.replace("/", "")}`}>{f.status}</span>
-        <b>{f.title}</b>
-        <span className="muted small">
-          {f.module_number}. {f.module_name || f.module}
-          {(f.status === "FAIL" || f.status === "WARNING") && ` · ${f.affected}${f.total ? `/${f.total}` : ""} affected · impact ${f.impact} · effort ${f.effort}`}
-        </span>
-      </div>
-      {open && (
+      {problem ? (
+        <div className="fbody"><PlainBody f={f} /></div>
+      ) : (
         <div className="fbody">
-          {f.reason && <p><b>Not measured:</b> {f.reason}</p>}
-          {f.summary && <p>{f.summary}</p>}
-          {(f.status === "FAIL" || f.status === "WARNING") && (
-            <p><b>Why it matters:</b> {f.why}<br /><b>Fix:</b> {f.fix}</p>
-          )}
-          {f.generated_fix && <><div className="label">Generated fix</div><pre>{fixCode(f.generated_fix)}</pre></>}
-          {f.items.length > 0 && (
-            <div className="scroll">
-              <table>
-                <thead><tr><th>URL</th><th>Evidence</th><th>Generated fix</th></tr></thead>
-                <tbody>
-                  {f.items.slice(0, 100).map((it, i) => (
-                    <tr key={i}>
-                      <td className="url">{it.url || "—"}</td>
-                      <td className="ev">{fmtEvidence(it.evidence)}</td>
-                      <td>{it.generated_fix && <pre>{fixCode(it.generated_fix)}</pre>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {(f.items.length > 100 || f.items_truncated > 0) && (
-                <p className="muted small">Showing 100 of {f.items.length + f.items_truncated}. Use the CSV export for all.</p>
-              )}
-            </div>
-          )}
-          {f.sources?.length > 0 && <div className="small muted">Source: {f.sources.join(", ")}</div>}
+          {f.plain_icon} <b>{f.plain_title || f.title}</b>{" "}
+          <span className="muted small">· {f.plain_status}{f.status !== "PASS" && `: ${f.plain_found}`}</span>
         </div>
       )}
+      <button className="link small" onClick={() => setTech(!tech)}>
+        {tech ? "Hide technical details" : "Technical details for your web developer"}
+      </button>
+      {tech && <TechDetails f={f} />}
     </div>
   );
 }
 
-function Findings({ auditId }: { auditId: number }) {
+function TechDetails({ f }: { f: Finding }) {
+  return (
+    <div className="fbody tech">
+      <div>
+        <span className={`badge s-${f.status.replace("/", "")}`}>{f.status}</span> <b>{f.title}</b>
+        <span className="muted small"> {f.check_id}
+          {(f.status === "FAIL" || f.status === "WARNING") && ` · ${f.affected}${f.total ? `/${f.total}` : ""} affected · impact ${f.impact} · effort ${f.effort}`}
+        </span>
+      </div>
+      {f.reason && <p><b>Not measured:</b> {f.reason}</p>}
+      {f.summary && <p>{f.summary}</p>}
+      {(f.status === "FAIL" || f.status === "WARNING") && <p><b>Why:</b> {f.why}<br /><b>Fix:</b> {f.fix}</p>}
+      {f.generated_fix && <><div className="label">Ready-made fix</div><pre>{fixCode(f.generated_fix)}</pre></>}
+      {f.items.length > 0 && (
+        <div className="scroll">
+          <table>
+            <thead><tr><th>Page</th><th>Details</th><th>Ready-made fix</th></tr></thead>
+            <tbody>
+              {f.items.slice(0, 100).map((it, i) => (
+                <tr key={i}>
+                  <td className="url">{it.url || "—"}</td>
+                  <td className="ev">{fmtEvidence(it.evidence)}</td>
+                  <td>{it.generated_fix && <pre>{fixCode(it.generated_fix)}</pre>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {(f.items.length > 100 || f.items_truncated > 0) && (
+            <p className="muted small">Showing 100 of {f.items.length + f.items_truncated}. Use the CSV export for all.</p>
+          )}
+        </div>
+      )}
+      {f.sources?.length > 0 && <div className="small muted">Source: {f.sources.join(", ")}</div>}
+    </div>
+  );
+}
+
+const ORDER: Record<string, number> = { FAIL: 0, WARNING: 1, PASS: 2, NOT_CHECKED: 3, "N/A": 4 };
+
+function Findings({ auditId, agents, agent, setAgent }: {
+  auditId: number; agents: Agent[]; agent: string; setAgent: (k: string) => void;
+}) {
   const [all, setAll] = useState<Finding[]>([]);
-  const [cat, setCat] = useState("");
-  const [status, setStatus] = useState("FAIL,WARNING");
+  const [show, setShow] = useState("problems");
   const [q, setQ] = useState("");
 
   useEffect(() => {
@@ -210,30 +234,42 @@ function Findings({ auditId }: { auditId: number }) {
   }, [auditId]);
 
   const shown = useMemo(() => all.filter((f) =>
-    (!cat || f.category === cat) &&
-    (!status || status.split(",").includes(f.status)) &&
-    (!q || (f.title + f.check_id + (f.summary || "") + f.items.map((i) => i.url).join(" ")).toLowerCase().includes(q.toLowerCase()))),
-  [all, cat, status, q]);
+    (!agent || f.module === agent) &&
+    (show === "all" || (show === "problems" ? ["FAIL", "WARNING"].includes(f.status) : f.status === show)) &&
+    (!q || [f.plain_title, f.title, f.check_id, f.summary, ...f.items.map((i) => i.url)].join(" ").toLowerCase().includes(q.toLowerCase()))),
+  [all, agent, show, q]);
 
   return (
     <>
       <div className="row gap wrapline filters">
-        <select value={cat} onChange={(e) => setCat(e.target.value)}>
-          <option value="">All categories</option>
-          {Object.entries(CATEGORY_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        <select value={agent} onChange={(e) => setAgent(e.target.value)}>
+          <option value="">All agents</option>
+          {agents.map((a) => <option key={a.key} value={a.key}>{a.icon} {a.name}</option>)}
         </select>
-        <select value={status} onChange={(e) => setStatus(e.target.value)}>
-          <option value="FAIL,WARNING">Issues (FAIL + WARNING)</option>
-          <option value="FAIL">FAIL</option>
-          <option value="WARNING">WARNING</option>
-          <option value="PASS">PASS</option>
-          <option value="NOT_CHECKED">NOT_CHECKED</option>
-          <option value="">All statuses</option>
+        <select value={show} onChange={(e) => setShow(e.target.value)}>
+          <option value="problems">Problems only</option>
+          <option value="all">Everything</option>
+          <option value="PASS">Looks good</option>
+          <option value="NOT_CHECKED">Couldn't check</option>
         </select>
-        <input className="grow" placeholder="Search checks or URLs" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="grow" placeholder="Search checks or pages" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
-      <p className="muted small">{shown.length} of {all.length} checks</p>
-      {shown.map((f) => <FindingRow key={f.id} f={f} />)}
+      {agents.filter((a) => !agent || a.key === agent).map((a) => {
+        const fs = shown.filter((f) => f.module === a.key).sort((x, y) => (ORDER[x.status] ?? 9) - (ORDER[y.status] ?? 9) || y.priority - x.priority);
+        if (!fs.length && (agent !== a.key)) return null;
+        return (
+          <div key={a.key} className="agent-section">
+            <div className="row gap wrapline">
+              <span className="aicon big-icon">{a.icon}</span><h2 style={{ margin: 0 }}>{a.name}</h2>
+              <span className={`pill p-${a.tone}`}>{a.verdict}</span>
+            </div>
+            <p className="muted small">{a.job}</p>
+            {a.planned ? <p className="muted">This agent is still being built and will join in a later update.</p>
+              : fs.length ? fs.map((f) => <FindingRow key={f.id} f={f} />)
+              : <p className="muted">Nothing to show with the current filter.</p>}
+          </div>
+        );
+      })}
     </>
   );
 }

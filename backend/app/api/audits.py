@@ -1,6 +1,7 @@
 """Audit API: create, list, progress, findings, pages, reports, cancel, delete."""
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -11,10 +12,13 @@ from sqlalchemy.orm import Session
 
 from app.auth import AuthDep
 from app.crawler.urls import ensure_scheme, host_of, is_public_style_host, normalize_url, site_key
-from app.db.models import Audit, Finding, Image, Link, Page, PageText, Site
+from app.db.models import Audit, Finding, Image, Link, Page, PageText, Site, SiteFacts
 from app.db.session import get_db
 from app.queue import jobs
-from app.reports.build import STATUS_ORDER, finding_dict, top_fixes
+from app.reports.build import (
+    STATUS_ORDER, build_report_data, finding_dict, module_order, render_csv, render_html, render_json, top_fixes,
+)
+from app.reports.plain import agent_summaries, counts_sentence, grade
 from app.settings_store import load as load_settings
 from app.storage.blobs import blob_store
 
@@ -116,6 +120,14 @@ def get_audit(audit_id: int, db: Session = Depends(get_db)) -> dict:
         findings = db.execute(select(Finding).where(Finding.audit_id == audit_id)).scalars().all()
         out["top_fixes"] = [finding_dict(f) for f in top_fixes(findings)]
         out["missing"] = (a.summary or {}).get("missing", [])
+        counts: dict[str, int] = {}
+        for f in findings:
+            counts[f.status] = counts.get(f.status, 0) + 1
+        facts = db.get(SiteFacts, audit_id)
+        out["plain"] = {"grade": grade((a.scores or {}).get("overall")), "counts_sentence": counts_sentence(counts),
+                        "pages_checked": ((facts.data if facts else {}).get("crawl") or {}).get("pages_fetched")}
+        out["agents"] = [{k: v for k, v in ag.items() if k != "findings"}
+                         for ag in agent_summaries([finding_dict(f) for f in findings], module_order())]
     return out
 
 
@@ -191,6 +203,7 @@ def get_page(audit_id: int, page_id: int, db: Session = Depends(get_db)) -> dict
     }
 
 
+log = logging.getLogger(__name__)
 _CT = {"html": "text/html; charset=utf-8", "json": "application/json", "csv": "text/csv; charset=utf-8"}
 
 
@@ -199,8 +212,16 @@ def get_report(audit_id: int, fmt: str, download: bool = False, db: Session = De
     if fmt not in _CT:
         raise HTTPException(404, "Unknown format")
     a = _get_audit(db, audit_id)
-    key = (a.report_keys or {}).get(fmt)
-    data = blob_store().get(key) if key else None
+    data = None
+    if a.status == "completed":
+        try:  # rendered fresh so older audits get the current report layout and wording
+            rd = build_report_data(db, audit_id)
+            data = {"html": render_html, "json": render_json, "csv": render_csv}[fmt](rd).encode("utf-8")
+        except Exception:  # fall back to the copy stored when the audit finished
+            log.exception("report render failed for audit %s", audit_id)
+    if data is None:
+        key = (a.report_keys or {}).get(fmt)
+        data = blob_store().get(key) if key else None
     if data is None:
         raise HTTPException(404, "Report not available")
     headers = {}

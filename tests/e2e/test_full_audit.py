@@ -1,9 +1,12 @@
 """End-to-end: run a full audit (crawl -> Site Model -> modules -> score -> reports) against
 the local fixture site, through the real orchestrator and Postgres."""
+
 from __future__ import annotations
 
 import asyncio
 import json
+import os
+from pathlib import Path
 
 import pytest
 from sqlalchemy import select
@@ -140,11 +143,18 @@ def test_reports_render(audit_result):
     from app.reports.build import render_csv, render_html, render_json
     d = audit_result["data"]
     html = render_html(d)
-    assert "Missing on this site" in html and "Top 10 fixes" in html
+    assert "Meet your agents" in html and "Fix these first" in html and "Website Health Agent" in html
+    assert "Technical details for your web developer" in html
+    assert d["plain"]["grade"]["label"] and d["agents"][0]["name"] == "Keyword Agent"
+    assert all(f["plain_title"] and f["plain_status"] and f["plain_found"] for f in d["top_fixes"])
     assert json.loads(render_json(d))["audit"]["id"] == d["audit"]["id"]
     csv_text = render_csv(d)
-    assert csv_text.splitlines()[0].startswith("audit_id,category")
+    assert csv_text.splitlines()[0].startswith("audit_id,agent,in_plain_words")
     assert "tech.redirect_loops" in csv_text
+    if os.environ.get("EXAMPLE_REPORT_DIR"):  # regenerate docs/example-report.html and docs/example-findings.csv
+        out = Path(os.environ["EXAMPLE_REPORT_DIR"])
+        (out / "example-report.html").write_text(html, encoding="utf-8")
+        (out / "example-findings.csv").write_text(csv_text, encoding="utf-8")
 
 
 def test_persisted_site_model(audit_result, db):
