@@ -490,7 +490,7 @@ P: dict[str, dict[str, str]] = {
                       "do": "Follow the AI Answers Agent's advice and earn mentions on trusted websites."},
     # 17 geo content
     "geo.answer_first": {"t": "Pages answer the main question straight away",
-                         "bad": "that don't get to the point in the first few lines",
+                         "bad": "not getting to the point in the first few lines",
                          "why": "AI assistants and busy visitors look for a direct answer at the top of the page.",
                          "do": "Start each page with 2–3 sentences saying exactly what you offer. Drafts are in the technical details."},
     "geo.question_headings": {"t": "Headings written as questions",

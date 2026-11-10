@@ -60,7 +60,8 @@ class BacklinkAnalysis(CheckModule):
         else:
             src = [authority.source_label(auth.get("release"))]
             if auth.get("score") is None:
-                out.append(self.result("bl.authority", Status.PASS, auth["label"], sources=src,
+                # outside the loaded top-N domains: too few links across the web to earn a score
+                out.append(self.result("bl.authority", Status.WARNING, auth["label"], sources=src, affected=1,
                                        items=[FindingItem(None, {"domain": site_domain, "authority": auth["label"]})]))
             else:
                 prev, cur = auth.get("previous_score"), auth["score"]

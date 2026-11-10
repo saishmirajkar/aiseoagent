@@ -282,3 +282,12 @@ def test_ai_visibility_with_two_engines(monkeypatch):
     vis = run(AIVisibility(), c)["ai.visibility"]
     assert "by engine: Claude 0%, Gemini 100%" in vis.summary and "Brand mentioned in 50%" in vis.summary
     assert any(s.startswith("Gemini (gemini-2.5-flash") for s in vis.sources)
+
+
+def test_authority_outside_top_n_is_a_warning(monkeypatch):
+    monkeypatch.setattr(authority, "lookup", lambda doms: {d: {"score": None, "release": "r1",
+                                                               "label": "Low authority (outside top 1,000,000)"}
+                                                           for d in doms})
+    monkeypatch.setattr(m10_backlinks.inlinks, "referring_domains", lambda d: None)
+    r = run(BacklinkAnalysis(), ctx(_site()))
+    assert r["bl.authority"].status == Status.WARNING and "outside top" in r["bl.authority"].summary
