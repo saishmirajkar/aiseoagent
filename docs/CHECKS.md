@@ -21,7 +21,9 @@ Generated from the module registry (`scripts/gen_checks_doc.py`). Statuses: PASS
 | `content.thin` | Thin content | Med | Med | Expand with useful, specific content, or merge/noindex pages that cannot be improved. |
 | `content.duplicates` | Duplicate or near-duplicate pages | Med | Med | Merge duplicates, or set a canonical to the preferred page and differentiate the others. |
 | `content.repeated_blocks` | Large text blocks repeated across pages | High | Med | Remove placeholder/template text and replace it with content specific to each page. |
-| `content.h1` | Missing or multiple H1 headings | Med | Low | Give each page exactly one descriptive H1 that includes its main topic. |
+| `content.h1_missing` | Missing H1 heading | Med | Low | Add one descriptive H1 that includes the page's main topic. |
+| `content.h1_multiple` | Multiple different H1 headings | Low | Low | Keep one H1 for the page topic and turn the others into H2s. |
+| `content.placeholder` | Placeholder text left on the page | Med | Low | Replace the placeholder text with real copy, or remove the block. |
 | `content.heading_order` | Skipped heading levels | Low | Low | Use headings in order (H1 → H2 → H3) and don't pick levels for styling. |
 | `content.readability` | Hard-to-read content (Flesch Reading Ease < 30) | Low | Med | Shorten sentences, use plain words, add lists and subheadings. |
 | `content.gaps` | Content gaps vs search intent | High | Med | Add the suggested sections and FAQs (see the generated content brief). |
@@ -120,10 +122,10 @@ Generated from the module registry (`scripts/gen_checks_doc.py`). Statuses: PASS
 
 | Check ID | Check | Impact | Effort | Fix |
 |---|---|---|---|---|
-| `perf.lcp` | Largest Contentful Paint (LCP ≤ 2.5 s) | High | Med | Optimise the LCP element: compress/resize the hero image, preload it, cut render-blocking CSS/JS and reduce server response time. |
-| `perf.inp` | Interaction to Next Paint (INP ≤ 200 ms) | High | Med | Break up long JavaScript tasks, defer third-party scripts, and reduce main-thread work. |
-| `perf.cls` | Cumulative Layout Shift (CLS ≤ 0.1) | High | Low | Set width/height on images and embeds, reserve space for ads/banners, avoid inserting content above existing content. |
-| `perf.tbt` | Total Blocking Time (lab proxy for INP, ≤ 200 ms) | Med | Med | Reduce and split JavaScript; defer non-critical scripts. |
+| `perf.field_cwv` | Core Web Vitals from real visitors (Chrome UX Report) | High | Med | Fix the metric that is outside 'good' (see the lab checks and opportunities for causes); field data updates over the following 28 days. |
+| `perf.lcp` | Largest Contentful Paint – lab test (≤ 2.5 s) | Med | Med | Optimise the LCP element: compress/resize the hero image, preload it, cut render-blocking CSS/JS and reduce server response time. |
+| `perf.cls` | Cumulative Layout Shift – lab test (≤ 0.1) | Med | Low | Set width/height on images and embeds, reserve space for ads/banners, avoid inserting content above existing content. |
+| `perf.tbt` | Total Blocking Time – lab test (proxy for INP, ≤ 200 ms) | Med | Med | Reduce and split JavaScript; defer non-critical scripts. |
 | `perf.score` | Lighthouse performance score (≥ 90) | Med | Med | Work through the opportunities listed in the performance findings. |
 | `perf.opportunities` | Top performance opportunities | Med | Med | Apply the listed fixes, starting with the largest savings. |
 
@@ -192,3 +194,4 @@ _Not built yet; planned for build phase 5. Reported as NOT_CHECKED._
 | `geo.sources_and_stats` | Statistics and cited sources | Med | Med | Add specific figures and link to authoritative sources for key claims. |
 | `geo.authorship` | Author bylines and dates on articles | Med | Low | Show author name (linked to a bio) and published/updated dates on every article. |
 | `geo.eeat_site` | Site trust signals (about, contact, policies, profiles) | Med | Low | Add the missing pages/signals listed in the evidence. |
+| `geo.fact_consistency` | Consistent business facts across pages | Med | Low | Use one founding year and one experience figure everywhere. If a number is an animated counter, put the final value in the HTML (crawlers read the starting value). |

@@ -29,6 +29,7 @@ class ImageRec:
     modern_source: bool = False  # <picture><source type="image/webp|avif">
     in_link: bool = False
     link_text_empty: bool = False  # the enclosing <a> has no text/aria-label of its own
+    in_chrome: bool = False  # inside a menu, header, dialog/drawer or hidden element, not the page content
     rendered_w: int | None = None
     rendered_h: int | None = None
     above_fold: bool | None = None

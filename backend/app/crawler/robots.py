@@ -1,7 +1,9 @@
 """robots.txt: matching (via Protego) plus a group parser for reporting."""
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
+from urllib.parse import urlsplit
 
 from protego import Protego
 
@@ -52,16 +54,37 @@ class RobotsInfo:
         return float(d) if d is not None else None
 
     def group_for(self, agent: str) -> RobotsGroup | None:
-        """Most specific group for an agent (exact token match), else the '*' group."""
+        """Rules that apply to an agent: all groups naming it (merged, as Google does), else all '*' groups."""
         a = agent.lower()
-        star = None
-        for g in self.groups:
-            names = [x.lower() for x in g.agents]
-            if a in names:
-                return g
-            if "*" in names and star is None:
-                star = g
-        return star
+        exact = [g for g in self.groups if a in [x.lower() for x in g.agents]]
+        chosen = exact or [g for g in self.groups if "*" in [x.lower() for x in g.agents]]
+        if not chosen:
+            return None
+        if len(chosen) == 1:
+            return chosen[0]
+        merged = RobotsGroup(agents=list(dict.fromkeys(x for g in chosen for x in g.agents)))
+        for g in chosen:
+            merged.rules.extend(g.rules)
+            merged.crawl_delay = merged.crawl_delay or g.crawl_delay
+        return merged
+
+    def matching_rule(self, url: str, agent: str) -> str | None:
+        """The rule that decides access for ``url`` (longest match wins; Allow wins ties), e.g. 'Disallow: /contact'."""
+        g = self.group_for(agent)
+        if g is None:
+            return None
+        parts = urlsplit(url)
+        path = (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
+        best: tuple[int, int, str] | None = None
+        for kind, rule in g.rules:
+            if not rule:
+                continue
+            rx = "^" + re.escape(rule).replace(r"\*", ".*").replace(r"\$", "$")  # robots wildcards
+            if re.match(rx, path):
+                key = (len(rule), 1 if kind == "allow" else 0, f"{kind.capitalize()}: {rule}")
+                if best is None or key[:2] > best[:2]:
+                    best = key
+        return best[2] if best else None
 
     def ai_bot_rules(self, origin: str, bots: list[str] | None = None) -> dict[str, dict]:
         out = {}

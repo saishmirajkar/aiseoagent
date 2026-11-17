@@ -5,6 +5,7 @@ import re
 from collections import defaultdict
 from urllib.parse import urlsplit
 
+from app.crawler.urls import is_action_url, is_pagination
 from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Level, Need, Status,
 )
@@ -29,7 +30,7 @@ whether the pages are unrelated/weakly related (keep=false). For kept links writ
 anchor text of 2-6 words in the page language that names the TO page's topic (no "click here"), and a
 short reason. Return one entry per proposal id."""
 REVIEW_SCHEMA = obj({"links": arr(obj({"id": INT, "keep": BOOL, "anchor": STR, "reason": STR}))})
-MIN_SIMILARITY = 0.12
+MIN_SIMILARITY = 0.2  # below this, pages share little more than a few common words
 MIN_SHARED_TOPICS = 2
 NEAR_DUPLICATE_SIM = 0.9  # near-identical pages: a duplicate-content issue, not a linking opportunity
 
@@ -142,7 +143,8 @@ class InternalLinking(CheckModule):
 
         orphan_urls = {i.url for i in orphans}
         few = [FindingItem(p.url, {"inlinks": p.inlinks, "from": p.inlink_sources[:5]})
-               for p in indexable if 0 < p.inlinks < th.important_page_min_inlinks and p.url not in orphan_urls]
+               for p in indexable if 0 < p.inlinks < th.important_page_min_inlinks and p.url not in orphan_urls
+               and not is_pagination(p.url)]  # page 2+ of a listing only needs the 'next' link
         out.append(self.by_population("links.few_inlinks", few, len(indexable), fail=False,
                                       summary=f"Pages with 1–{th.important_page_min_inlinks - 1} inbound internal "
                                               f"link(s){caveat}"))
@@ -161,7 +163,8 @@ class InternalLinking(CheckModule):
                     generic.append((p.url, l.anchor.strip(), l.target))
                 elif not a and not l.image_link:
                     empty.append((p.url, "", l.target))
-                if l.nofollow:
+                # nofollow on share/reply/cart links and on links back to the same page ("Cancel reply") is intended
+                if l.nofollow and not is_action_url(l.target) and l.target != p.url:
                     nofollow.append((p.url, l.anchor.strip(), l.target))
         for cid, pairs, summ in (("links.generic_anchors", generic, "Internal links with generic anchor text"),
                                  ("links.empty_anchors", empty, "Internal links with no text"),
@@ -185,8 +188,8 @@ class InternalLinking(CheckModule):
         tfidf = TfIdf({p.url: f"{p.title or ''} {' '.join(t for _, t in p.headings)} {p.text[:20000]}"
                        for p in sources}, groups={p.url: p.template_key or "" for p in sources})
         links_from: dict[str, set[str]] = {p.url: {l.target for l in p.links if l.internal} for p in sources}
-        targets = [p for p in indexable if p.url in orphan_urls or p.inlinks < th.important_page_min_inlinks
-                   or (p.depth or 0) > 3]
+        targets = [p for p in indexable if not is_pagination(p.url) and (
+                   p.url in orphan_urls or p.inlinks < th.important_page_min_inlinks or (p.depth or 0) > 3)]
         targets += [site.pages[u] for u in orphan_urls if u in site.pages and site.pages[u] not in targets]
         items: list[FindingItem] = []
         for t in targets:

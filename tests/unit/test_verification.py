@@ -94,3 +94,44 @@ def test_fact_consistency_catches_knk_style_contradictions():
     assert not any(p.startswith("25 years") for p in probs)  # 25+ matches 1999
     ok = extract_fact_claims([page("/", text="Founded in 2010. 15 years of experience.")])
     assert fact_problems(ok, 2026) == []
+
+
+def test_action_and_pagination_urls():
+    from app.crawler.urls import is_action_url, is_pagination
+    assert is_action_url("https://ma.tt/post/?replytocom=1") and is_action_url("https://ma.tt/post/?share=x")
+    assert is_action_url("https://shop.com/cart") and is_action_url("https://shop.com/cart/add?id=2")
+    assert not is_action_url("https://shop.com/products/cart-wheel") and not is_action_url("https://ma.tt/about/")
+    assert is_pagination("https://ma.tt/page/2/") and is_pagination("https://shop.com/collections/all?page=3")
+    assert not is_pagination("https://shop.com/collections/all?page=1") and not is_pagination("https://ma.tt/pages/x")
+
+
+def test_robots_groups_are_merged_and_rule_reported():
+    from app.crawler.robots import build_robots
+    t = "User-agent: *\nDisallow:\n\nUser-agent: *\nDisallow: /contact\nAllow: /contact/public$\n"
+    r = build_robots("https://ma.tt/robots.txt", 200, t)
+    assert not r.can_fetch("https://ma.tt/contact/", "Googlebot")
+    assert r.matching_rule("https://ma.tt/contact/", "Googlebot") == "Disallow: /contact"
+    assert r.matching_rule("https://ma.tt/contact/public", "Googlebot") == "Allow: /contact/public$"
+
+
+def test_screen_reader_headings_ignored():
+    from app.crawler.parser import parse_page
+    from app.crawler.urls import SiteScope
+    from app.sitemodel.types import PageData
+    p = PageData(url=BASE + "/", final_url=BASE + "/")
+    parse_page(p, '<html><body><h1>Title</h1><h1 class="screen-reader-text">Post navigation</h1>'
+                  '<h2 hidden>x</h2><h2>Real</h2></body></html>', SiteScope("ex.com"))
+    assert p.headings == [(1, "Title"), (2, "Real")]
+
+
+def test_placeholder_filenames_and_readability_guards():
+    from app.modules.m02_content import ContentOptimization, flesch
+    from app.modules.m05_images import non_descriptive_filename
+    s = site([page("/", text="Welcome to the shop. " * 30), page("/sale", text="Lorem ipsum dolor sit amet, consectetur.")])
+    r = run(ContentOptimization(), ctx(s))["content.placeholder"]
+    assert [i.url for i in r.items] == [BASE + "/sale"]
+    assert not non_descriptive_filename("A11559_25Q3_Cruiser_Dark_Navy_Blizzard_PDP_LEFT-2000x2000_9f5ba943.png")
+    assert non_descriptive_filename("683DB48C-C4E4-45DF-BA8A-928574FB89EB-1024x768.jpeg")
+    assert non_descriptive_filename("IMG_3757-1024x768.jpeg")
+    menu = " ".join(["Shop Men Shop Women New Arrivals Bestsellers Sale"] * 40)  # no sentences: not scored
+    assert flesch(menu) is None

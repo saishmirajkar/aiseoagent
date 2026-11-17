@@ -12,9 +12,14 @@ from app.crawler.simhash import content_hash, simhash, tokens
 from app.crawler.urls import SiteScope, filename_of, normalize_url
 from app.sitemodel.types import ImageRec, LinkRec, PageData
 
+SR_ONLY = re.compile(r"\b(screen-reader-text|sr-only|visually-hidden|screen-reader-only|assistive-text)\b", re.I)
+
 log = logging.getLogger(__name__)
 
 STRIP_FOR_TEXT = ["script", "style", "noscript", "template", "svg", "iframe", "object", "canvas"]
+# site chrome that is not the page's own content (menus, drawers, pop-ups, hidden copies)
+CHROME = 'nav, [role="navigation"], dialog, [role="dialog"], [aria-hidden="true"], [hidden]'
+PAGE_FRAME = 'header, footer, aside, [role="banner"], [role="contentinfo"], [role="complementary"]'
 MOUNT_IDS = ("root", "app", "__next", "__nuxt", "___gatsby", "svelte", "main-app")
 _WS = re.compile(r"\s+")
 _PHONE = re.compile(r"(?<![\w/])(\+?\(?\d[\d\s().\-]{7,18}\d)(?![\w/])")
@@ -83,6 +88,33 @@ def _types(item: dict) -> list[str]:
     if isinstance(t, list):
         return [str(x) for x in t]
     return [str(t)] if t else []
+
+
+def _inside(node: LexborNode, tags: tuple[str, ...], roles: tuple[str, ...] = ()) -> bool:
+    """True when an ancestor is one of ``tags`` or has one of the ARIA ``roles``."""
+    p = node.parent
+    while p is not None:
+        if p.tag in tags or (roles and (p.attributes or {}).get("role") in roles):
+            return True
+        p = p.parent
+    return False
+
+
+def _main_text(tree: LexborHTMLParser, body: LexborNode) -> str:
+    """The page's own text: <main> (or role=main) when it holds real content, otherwise the body without
+    the site header, footer, sidebars and menus. Menus, drawers, dialogs and hidden copies are always
+    dropped, so template text (mega-menus on Shopify, theme chrome on WordPress) is not counted as content."""
+    main = tree.css_first("main") or tree.css_first('[role="main"]')
+    for n in body.css(CHROME):
+        n.decompose()
+    if main is not None:
+        text = _clean(main.text(deep=True, separator=" "))
+        if len(text.split()) >= 50:
+            return text
+    for n in body.css(PAGE_FRAME):
+        if not _inside(n, ("article", "main"), ("main",)):
+            n.decompose()
+    return _clean(body.text(deep=True, separator=" "))
 
 
 def parse_page(page: PageData, html: str, scope: SiteScope) -> ShellSignals:
@@ -248,11 +280,17 @@ def parse_page(page: PageData, html: str, scope: SiteScope) -> ShellSignals:
                     modern = True
         in_link = False
         link_text_empty = False
+        in_chrome = False
         p = img.parent
         while p is not None and p.tag not in ("body", "html"):
-            if p.tag == "a":
+            if p.tag == "a" and not in_link:
                 in_link = True
                 link_text_empty = not (_clean(p.text(deep=True)) or _attr(p, "aria-label") or _attr(p, "title"))
+            pa = p.attributes or {}
+            if (p.tag in ("nav", "header", "dialog", "details") or pa.get("role") in ("navigation", "dialog", "banner")
+                    or pa.get("aria-hidden") == "true" or "hidden" in pa):
+                in_chrome = True
+            if p.tag in ("main", "article") or pa.get("role") == "main":
                 break
             p = p.parent
         page.images.append(ImageRec(
@@ -260,7 +298,7 @@ def parse_page(page: PageData, html: str, scope: SiteScope) -> ShellSignals:
             filename=filename_of(absrc), width_attr=_int(_attr(img, "width")),
             height_attr=_int(_attr(img, "height")), loading=(_attr(img, "loading") or None),
             position=i, has_srcset=bool(_attr(img, "srcset") or _attr(img, "data-srcset")),
-            modern_source=modern, in_link=in_link, link_text_empty=link_text_empty))
+            modern_source=modern, in_link=in_link, link_text_empty=link_text_empty, in_chrome=in_chrome))
 
     # ------------------------------------------------------------- mixed content & resources
     page.mixed_content = []
@@ -296,6 +334,12 @@ def parse_page(page: PageData, html: str, scope: SiteScope) -> ShellSignals:
     # ------------------------------------------------------------- headings
     page.headings = []
     for h in tree.css("h1, h2, h3, h4, h5, h6"):
+        attrs = h.attributes
+        if "hidden" in attrs or SR_ONLY.search(attrs.get("class") or ""):
+            continue  # screen-reader-only labels ("Post navigation") are not part of the visible outline
+        if (_inside(h, ("footer", "nav", "aside", "dialog"), ("contentinfo", "navigation", "complementary", "dialog"))
+                and not _inside(h, ("article", "main"), ("main",))):
+            continue  # footer/menu/sidebar headings belong to the site template, not this page's outline
         page.headings.append((int(h.tag[1]), _clean(h.text(deep=True))[:300]))
 
     # ------------------------------------------------------------- byline / address heuristics
@@ -322,13 +366,14 @@ def parse_page(page: PageData, html: str, scope: SiteScope) -> ShellSignals:
 
     tree.strip_tags(STRIP_FOR_TEXT)
     body = tree.body
-    text = _clean(body.text(deep=True, separator=" ")) if body is not None else ""
+    full_text = _clean(body.text(deep=True, separator=" ")) if body is not None else ""
+    text = _main_text(tree, body) if body is not None else ""
     page.text = text
     words = tokens(text)
     page.word_count = len(words)
     page.content_hash = content_hash(text) if text else None
     page.simhash = simhash(text) if text else None
-    phones = {m.group(1).strip() for m in _PHONE.finditer(text)
+    phones = {m.group(1).strip() for m in _PHONE.finditer(full_text)  # phones often sit in the footer
               if 9 <= sum(c.isdigit() for c in m.group(1)) <= 15}
     if phones:
         page.nap["text_phones"] = sorted(phones)[:5]

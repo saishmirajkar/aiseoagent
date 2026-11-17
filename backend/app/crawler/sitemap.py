@@ -73,7 +73,10 @@ class _StreamParser:
                     self.kind = name
                 continue
             if name == "loc":
-                self._loc = (el.text or "").strip()
+                # only the page's own <loc>: image:loc / video:loc children of <url> also end in "loc"
+                parent = el.getparent()
+                if parent is not None and _local(parent.tag) in ("url", "sitemap"):
+                    self._loc = (el.text or "").strip()
             elif name == "lastmod":
                 self._lastmod = (el.text or "").strip() or None
             elif name in ("url", "sitemap"):

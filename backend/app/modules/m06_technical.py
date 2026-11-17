@@ -1,8 +1,12 @@
 """Module 6: Technical Audit."""
 from __future__ import annotations
 
-from collections import defaultdict
+import re
 
+from collections import defaultdict
+from urllib.parse import urlsplit
+
+from app.crawler.urls import is_action_url
 from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Level, Need, Status,
 )
@@ -12,6 +16,9 @@ from app.modules.common import (
 )
 
 H, M, L = Level.HIGH, Level.MED, Level.LOW
+# pages commonly kept out of search on purpose (Shopify /collections/all, search, cart, account, thank-you)
+INTENTIONAL_NOINDEX = re.compile(r"^/(collections/all|search|cart|checkout|account|my-account|thank-?you|order-received)"
+                                 r"(/|$)", re.I)
 UNVERIFIABLE = {401, 403, 429, 999}  # bot protection: cannot conclude the link is broken
 
 
@@ -227,7 +234,7 @@ class TechnicalAudit(CheckModule):
         redirecting.update({u: s.final_url for u, s in site.url_status.items() if s.redirects})
         for p in ok:
             for l in p.links:
-                if l.internal and l.target in redirecting:
+                if l.internal and l.target in redirecting and not is_action_url(l.target):
                     link_redirects[p.url].append({"link": l.target, "redirects_to": redirecting[l.target]})
         if redirecting:
             out.append(self.by_population("tech.redirect_chains", chains, len(redirecting), fail=False,
@@ -278,11 +285,17 @@ class TechnicalAudit(CheckModule):
                                       summary="Pages send contradictory canonical signals"))
 
         # noindex on important pages
+        home = site.homepage
         noidx = [FindingItem(p.url, {"meta_robots": p.meta_robots, "x_robots_tag": p.x_robots_tag,
                                      "depth": p.depth, "inlinks": p.inlinks, "in_sitemap": p.in_sitemap})
-                 for p in ok if p.is_noindex and is_important(p, site, th.important_page_min_inlinks)]
-        out.append(self.by_population("tech.noindex_important", noidx, len(ok),
-                                      summary="Important pages are set to noindex"))
+                 for p in ok if p.is_noindex and is_important(p, site, th.important_page_min_inlinks)
+                 and not INTENTIONAL_NOINDEX.search(urlsplit(p.url).path or "/")]
+        home_hidden = any(home is not None and i.url == home.url for i in noidx)
+        r = self.by_population("tech.noindex_important", noidx, len(ok), fail=home_hidden,
+                               summary="Important pages are set to noindex")
+        if noidx and not home_hidden:
+            r.summary += " (often deliberate; confirm each one should stay out of Google)"
+        out.append(r)
 
         out.append(self._hreflang(ctx, ok))
         out.append(self._https(ctx))

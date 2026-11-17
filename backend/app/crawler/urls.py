@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import posixpath
 import re
-from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
+from urllib.parse import parse_qs, quote, unquote, urljoin, urlsplit, urlunsplit
 
 NON_PAGE_EXTENSIONS = {
     # images
@@ -113,6 +113,30 @@ def path_extension(url: str) -> str:
     path = urlsplit(url).path
     last = path.rsplit("/", 1)[-1]
     return last.rsplit(".", 1)[-1].lower() if "." in last else ""
+
+
+# links that perform an action rather than lead to a page (comment replies, share buttons, carts, logins)
+ACTION_QUERY_KEYS = {"replytocom", "share", "add-to-cart", "add_to_cart", "add-to-wishlist", "add_to_wishlist",
+                     "action", "like_comment", "print", "redirect_to", "unapproved", "moderation-hash"}
+ACTION_PATH = re.compile(r"/(wp-login\.php|wp-admin|cart|checkout|account/login|account/register|my-account|"
+                         r"login|logout|signin|sign-in|feed)(/|$)|/cart/add|/comment-page-\d+", re.I)
+
+
+def is_action_url(url: str) -> bool:
+    parts = urlsplit(url)
+    keys = {k.lower() for k in parse_qs(parts.query, keep_blank_values=True)}
+    return bool(keys & ACTION_QUERY_KEYS) or bool(ACTION_PATH.search(parts.path or ""))
+
+
+PAGINATION = re.compile(r"/page/\d+/?$|/p/\d+/?$", re.I)
+
+
+def is_pagination(url: str) -> bool:
+    """Page 2, 3, … of a listing (blog index, category, search results)."""
+    parts = urlsplit(url)
+    q = parse_qs(parts.query)
+    return bool(PAGINATION.search(parts.path or "")) or any(
+        k in q and q[k][0].isdigit() and q[k][0] != "1" for k in ("page", "paged", "pg"))
 
 
 def looks_like_page(url: str) -> bool:

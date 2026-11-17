@@ -51,10 +51,18 @@ def syllables(word: str) -> int:
     return max(1, n)
 
 
+PLACEHOLDER = re.compile(r"\blorem ipsum\b|\bdolor sit amet\b|\b(insert|add|enter|type) your (text|content|"
+                         r"heading|title) here\b|\bthis is (a )?(sample|placeholder|dummy) (text|page)\b", re.I)
+
+
 def flesch(text: str) -> float | None:
-    sents = [s for s in re.split(r"[.!?]+\s", text) if len(s.split()) >= 3]
-    words = [w for w in re.findall(r"[A-Za-z']+", text)]
-    if len(sents) < 3 or len(words) < 100:
+    """Flesch Reading Ease on the page's prose only. Product grids, menus and lists have no sentence
+    punctuation and would give meaningless (even negative) scores, so pages without enough real
+    sentences are not scored."""
+    sents = [s for s in re.split(r"[.!?]+\s", text) if 3 <= len(s.split()) <= 60]
+    words = [w for s in sents for w in re.findall(r"[A-Za-z']+", s)]
+    total = len(re.findall(r"[A-Za-z']+", text))
+    if len(sents) < 5 or len(words) < 100 or len(words) < 0.5 * total:
         return None
     syl = sum(syllables(w) for w in words)
     return round(206.835 - 1.015 * (len(words) / len(sents)) - 84.6 * (syl / len(words)), 1)
@@ -106,6 +114,10 @@ class ContentOptimization(CheckModule):
                   "Several different H1s blur what the page is about (Google tolerates it, but one clear H1 is "
                   "the convention). Identical copies, e.g. hidden mobile/desktop versions, are not counted.",
                   "Keep one H1 for the page topic and turn the others into H2s.", population="pages"),
+        CheckSpec("content.placeholder", "Placeholder text left on the page", M, L,
+                  "Filler text such as 'Lorem ipsum' looks unfinished to visitors and tells search engines the "
+                  "page is not real content.",
+                  "Replace the placeholder text with real copy, or remove the block.", population="pages"),
         CheckSpec("content.heading_order", "Skipped heading levels", L, L,
                   "Skipping levels (H2 → H4) weakens the document outline for search engines and screen readers.",
                   "Use headings in order (H1 → H2 → H3) and don't pick levels for styling.", population="pages"),
@@ -185,6 +197,14 @@ class ContentOptimization(CheckModule):
         if dup_only > 0:
             r.summary += f" ({dup_only} page(s) repeat the same H1, e.g. hidden mobile/desktop copies; not counted)"
         out.append(r)
+
+        filler = []
+        for p in pages:
+            m = PLACEHOLDER.search(p.text or "")
+            if m:
+                filler.append(FindingItem(p.url, {"found_text": " ".join(p.text[max(0, m.start() - 30):m.end() + 60]
+                                                                         .split())}))
+        out.append(self.by_population("content.placeholder", filler, n, summary="Pages with placeholder text"))
 
         skips = []
         for p in pages:

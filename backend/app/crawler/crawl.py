@@ -25,7 +25,7 @@ from app.crawler.renderer import Renderer
 from app.crawler.robots import AI_BOTS, RobotsInfo, build_robots
 from app.crawler.sitemap import collect_sitemaps
 from app.crawler.urls import (
-    SiteScope, ensure_scheme, host_of, looks_like_page, normalize_url, origin_of, toggle_www,
+    SiteScope, ensure_scheme, host_of, is_action_url, looks_like_page, normalize_url, origin_of, toggle_www,
 )
 from app.sitemodel.builder import build_model
 from app.sitemodel.types import ImageAsset, PageData, SiteFacts, SiteModel, UrlStatus
@@ -267,7 +267,7 @@ class Crawler:
             sitemap_seeded = True
             added = 0
             for u in sitemap_urls:
-                if u in self.seen or not self.scope.is_internal(u) or not looks_like_page(u):
+                if u in self.seen or not self.scope.is_internal(u) or not looks_like_page(u) or is_action_url(u):
                     continue
                 if not self.robots.can_fetch(u, self.ua_token):
                     continue
@@ -326,7 +326,7 @@ class Crawler:
             if not link.internal:
                 continue
             t = link.target
-            if t in self.seen or not looks_like_page(t):
+            if t in self.seen or not looks_like_page(t) or is_action_url(t):
                 continue
             self.seen.add(t)
             if not self.robots.can_fetch(t, self.ua_token):
@@ -372,6 +372,11 @@ class Crawler:
                     self.url_status[u] = UrlStatus(url=u, status=None, blocked_by_robots=True)
                     return
                 r = await self.fetcher.check(u)
+                if r.status is None and u.startswith("http://"):
+                    # plain-http link that failed to connect: if the https version answers, the target exists
+                    r2 = await self.fetcher.check("https://" + u[len("http://"):])
+                    if r2.status is not None:
+                        r = r2
                 self.url_status[u] = UrlStatus(url=u, status=r.status, final_url=r.final_url,
                                                redirects=len(r.chain), error=r.error,
                                                blocked_by_robots=r.blocked_redirect,
@@ -385,7 +390,7 @@ class Crawler:
         external: Counter[str] = Counter()
         for p in list(self.pages.values()):
             for l in p.links:
-                if l.target in self.pages or l.target in self.url_status:
+                if l.target in self.pages or l.target in self.url_status or (l.internal and is_action_url(l.target)):
                     continue
                 (internal if l.internal else external)[l.target] += 1
             # canonical and hreflang targets must be verified too

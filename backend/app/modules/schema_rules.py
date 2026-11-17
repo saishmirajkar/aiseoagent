@@ -116,7 +116,9 @@ def validate(item: dict, path: str = "", is_root: bool = True, jsonld: bool = Tr
     ts = types_of(item)
     if is_root and not ts:
         v = Validation(type="(none)")
-        v.errors.append("Item has no @type")
+        keys = [k for k in item if not k.startswith("@")][:5]
+        v.errors.append("Item has no @type, so search engines ignore it"
+                        + (f" (it contains: {', '.join(keys)})" if keys else ""))
         return [v]
     if is_root and jsonld:
         ctx = item.get("@context")

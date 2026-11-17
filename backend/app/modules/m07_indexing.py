@@ -1,6 +1,8 @@
 """Module 7: Crawling & Indexing (crawl-based; Search Console checks when connected)."""
 from __future__ import annotations
 
+import re
+
 from collections import Counter
 from xml.sax.saxutils import escape
 
@@ -10,6 +12,9 @@ from app.modules.base import (
 )
 from app.modules.common import cached_link_sources, internal_targets, is_utility
 
+# blocked files that don't affect how the page looks to Google (tracking, checkout, analytics)
+NON_RENDERING = re.compile(r"/checkouts?/|/cdn/wpm/|/wpm@|web-pixels|/cart(\.js)?(\?|$)|analytics|gtag|gtm\.js|"
+                           r"pixel|tracking|/recaptcha/|/wp-admin/|/wp-login|/account/", re.I)
 H, M, L = Level.HIGH, Level.MED, Level.LOW
 GSC_SETUP = ("Requires Google Search Console access. Setup: create a Google Cloud service account, "
              "add its e-mail as a user on the Search Console property, and save the JSON key as the "
@@ -118,15 +123,15 @@ class CrawlingIndexing(CheckModule):
                     group = robots.group_for("Googlebot")
                     blocked.append(FindingItem(u, {
                         "in_sitemap": u in site.sitemap_urls, "linked_from_pages": n_links,
-                        "matching_group": group.agents if group else None,
-                        "disallow_rules": [p for d, p in (group.rules if group else []) if d == "disallow"][:10]}))
+                        "blocked_by_rule": robots.matching_rule(u, "Googlebot"),
+                        "matching_group": group.agents if group else None}))
             r = self.by_population("crawl.robots_blocks_important", blocked, len(candidates),
                                    summary="robots.txt blocks URLs that are linked, listed in the sitemap, or the homepage")
             r.sources = ["robots.txt evaluated as Googlebot"]
             out.append(r)
             res_items = []
             for p in ok:
-                bad = [x for x in p.resources if not robots.can_fetch(x, "Googlebot")]
+                bad = [x for x in p.resources if not robots.can_fetch(x, "Googlebot") and not NON_RENDERING.search(x)]
                 if bad:
                     res_items.append(FindingItem(p.url, {"blocked_resources": bad[:10], "count": len(bad)}))
             r = self.by_population("crawl.robots_blocks_resources", res_items, len(ok), fail=False,

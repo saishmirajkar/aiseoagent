@@ -65,7 +65,7 @@ def test_filename_heuristic():
 
 def test_image_checks():
     imgs = [
-        img("/i/IMG_1234.jpg", alt=None, width_attr=400, height_attr=None, loading="lazy"),
+        img("/i/IMG_1234.jpg", alt=None, width_attr=400, height_attr=None, loading="lazy", above_fold=True),
         img("/i/hero.webp", alt="", in_link=True, link_text_empty=True),
         img("/i/deco.webp", alt=""),                                  # decorative: not flagged
         img("/i/named.webp", alt="", in_link=True, link_text_empty=False),  # link has text: fine

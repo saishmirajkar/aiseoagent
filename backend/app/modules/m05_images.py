@@ -39,7 +39,11 @@ def non_descriptive_filename(filename: str) -> bool:
     stem = re.sub(r"-\d+x\d+$", "", stem)  # WordPress size suffix
     if not stem:
         return False
-    return bool(_GENERIC_NAME.match(stem) or _HASHY.match(stem) or _NUMERIC.match(stem))
+    if _GENERIC_NAME.match(stem) or _NUMERIC.match(stem):
+        return True
+    # long code-like names count as random only without real words ("Cruiser_Dark_Navy_..." is descriptive)
+    words = [w for w in re.findall(r"[A-Za-z]{3,}", stem) if not re.fullmatch(r"[A-Fa-f]+", w)]
+    return bool(_HASHY.match(stem)) and len(words) < 2
 
 
 def _tiny(img: ImageRec, a: ImageAsset | None) -> bool:
@@ -248,25 +252,35 @@ class ImageSEO(CheckModule):
         out.append(self.by_population("img.missing_dimensions", nodim, n_uniq, fail=False,
                                       summary="Images without explicit width and height"))
 
-        lazy_pairs, lazy_top = [], []
+        lazy_pairs, lazy_top, rendered_pages = [], [], 0
         for p in pages:
-            imgs = [i for i in p.images if not _tiny(i, assets.get(i.src))]
+            # menu/drawer/hidden images are not part of the page's visible flow (e.g. Shopify mega-menus)
+            imgs = [i for i in p.images if not _tiny(i, assets.get(i.src)) and not i.in_chrome]
             for idx, i in enumerate(imgs):
                 below = (i.above_fold is False) if i.above_fold is not None else idx >= 3
                 lazy = (i.loading or "").lower() == "lazy"
                 if below and not lazy:
                     lazy_pairs.append((p, i))
-            if imgs:
-                first = imgs[0]
-                top = first.above_fold if first.above_fold is not None else True
-                if top and (first.loading or "").lower() == "lazy":
-                    lazy_top.append(FindingItem(p.url, {"src": first.src, "loading": first.loading}))
+            # judged only on rendered pages, where the browser told us what is actually visible first;
+            # guessing from HTML order picks comment avatars or menu images on many themes
+            visible = [i for i in p.images if i.above_fold and not _tiny(i, assets.get(i.src))]
+            if visible:
+                rendered_pages += 1
+                first = visible[0]
+                if (first.loading or "").lower() == "lazy":
+                    lazy_top.append(FindingItem(p.url, {"src": first.src, "loading": first.loading,
+                                                        "fold_source": "rendered"}))
         lazy_missing = group_by_image(lazy_pairs, lambda p, i: {
             "fold_source": "rendered" if i.above_fold is not None else "position heuristic (4th+ image)"})
         out.append(self.by_population("img.lazy_missing", lazy_missing, n_uniq, fail=False,
                                       summary="Images likely below the fold without loading=\"lazy\""))
-        out.append(self.by_population("img.lazy_above_fold", lazy_top, len([p for p in pages if p.images]),
-                                      fail=False, summary="First image on the page is lazy-loaded"))
+        if rendered_pages:
+            out.append(self.by_population("img.lazy_above_fold", lazy_top, rendered_pages, fail=False,
+                                          summary=f"First visible image is lazy-loaded (checked on {rendered_pages} "
+                                                  "page(s) rendered in a browser)"))
+        else:
+            out.append(self.not_applicable("img.lazy_above_fold", "No page was rendered in a browser, so the first "
+                                                                  "visible image is unknown"))
 
         checked = [s for s in uniq if s in assets and (assets[s].status is not None)]
         broken = [FindingItem(uses[s][0], {"src": s, "status": assets[s].status, "pages": len(uses[s])},
