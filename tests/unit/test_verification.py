@@ -146,3 +146,12 @@ def test_bot_challenge_page_is_not_content():
     r = run(TechnicalAudit(), ctx(s))
     assert BASE + "/survey" in [i.url for i in r["tech.fetch_errors"].items]
     assert BASE + "/survey" not in {p.url for p in s.html_pages()}
+
+
+def test_collection_page_is_not_a_product():
+    from app.modules.m09_schema import SchemaMarkup
+    coll = page("/collections/all", text="Recycling bag $0.00 Add to cart Boxes $0.00 Add to cart")
+    prod = page("/products/bag", text="Recycling bag $0.00 Add to cart")
+    r = run(SchemaMarkup(), ctx(site([page("/"), coll, prod])))["schema.missing_types"]
+    products = {i.url for i in r.items if i.evidence["missing_type"] == "Product"}
+    assert BASE + "/products/bag" in products and BASE + "/collections/all" not in products

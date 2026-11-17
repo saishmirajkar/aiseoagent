@@ -27,6 +27,7 @@ SOCIAL = ("facebook.com", "instagram.com", "linkedin.com", "youtube.com", "x.com
           "tiktok.com", "pinterest.com", "threads.net", "github.com", "wikipedia.org", "crunchbase.com")
 ARTICLE_PATH = re.compile(r"/(blog|blogs|news|article|articles|post|posts|insights|stories|journal|"
                           r"resources|guides?|learn)/[^/]+", re.I)
+LISTING_PATH = re.compile(r"/(collections?|category|categories|product-category|tags?|search|shop)(/|$)", re.I)
 PRODUCT_PATH = re.compile(r"/(product|products|shop|store|item|items|p)/[^/]+", re.I)
 PRICE = re.compile(r"(₹|Rs\.?\s?|INR\s?|\$|USD\s?|€|EUR\s?|£|GBP\s?)\s?(\d{1,3}(?:[,\s]\d{2,3})*(?:\.\d{1,2})?|\d+(?:\.\d{1,2})?)")
 CURRENCY = {"₹": "INR", "rs": "INR", "inr": "INR", "$": "USD", "usd": "USD", "€": "EUR", "eur": "EUR",
@@ -120,8 +121,11 @@ def detect_types(page: PageData, site: SiteModel, local: bool) -> list[tuple[str
         return out
     og_type = (page.og.get("type") or "").lower()
     has_price = bool(PRICE.search(page.text[:20000]))  # with an add-to-cart signal = product page
-    if og_type == "product" or PRODUCT_PATH.search(path) or (has_price and CART.search(page.text[:20000])):
-        out.append(("Product", "og:type product" if og_type == "product" else "product URL"))
+    listing = bool(LISTING_PATH.search(path)) and not PRODUCT_PATH.search(path)  # category/collection pages
+    cart = has_price and bool(CART.search(page.text[:20000]))
+    if og_type == "product" or PRODUCT_PATH.search(path) or (cart and not listing):
+        out.append(("Product", "og:type product" if og_type == "product" else "product URL"
+                    if PRODUCT_PATH.search(path) else "price and add-to-cart on the page"))
     elif og_type == "article" or "datePublished" in page.dates or "published_time" in page.dates or (
             ARTICLE_PATH.search(path) and page.word_count >= 300):
         out.append(("Article", "article signals (og:type/dates/URL)"))
