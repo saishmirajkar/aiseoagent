@@ -79,7 +79,13 @@ class LinkBuilding(CheckModule):
         brand_words = kw_tokens(brand_of(ctx) or "") | kw_tokens(site_domain.split(".")[0])
         clusters = Counter(r["cluster"] for r in kmap.values()
                            if r.get("cluster") and not (kw_tokens(r["cluster"]) & brand_words))
-        topic = (ctx.inputs.business_type or (ctx.inputs.keywords[0] if ctx.inputs.keywords else None)
+        # the homepage's keyword describes the business best; the most common cluster can be a side topic
+        # (e.g. a blog full of interviews), which would send outreach to unrelated sites
+        home = ctx.site.homepage
+        home_kw = (kmap.get(home.url, {}).get("primary_keyword") if home else None) or None
+        if home_kw and kw_tokens(home_kw) <= brand_words:
+            home_kw = None  # a brand-only keyword says nothing about the topic
+        topic = (ctx.inputs.business_type or (ctx.inputs.keywords[0] if ctx.inputs.keywords else None) or home_kw
                  or (clusters.most_common(1)[0][0] if clusters else None)
                  or brand_of(ctx) or site_domain.split(".")[0])
         topic_words = kw_tokens(topic) | {w for r in list(kmap.values())[:10] for w in kw_tokens(r.get("primary_keyword", ""))}

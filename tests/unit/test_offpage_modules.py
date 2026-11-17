@@ -1,6 +1,8 @@
 """Modules 10 (backlinks), 11 (outreach), 12 (mentions), 16 (AI visibility) + inlink import API."""
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from app.datalayer import authority
@@ -166,6 +168,19 @@ def test_outreach_module(monkeypatch, no_db):
     assert set(doms) == {"blog.org", "mag.com", "kartblog.org"}  # social sites and competitors excluded
     assert r["out.drafts"].status == Status.PASS and "nothing is sent" in r["out.drafts"].summary
     assert saved["site"] == "acme.com" and all(p.get("draft") for p in saved["ps"])
+
+
+def test_outreach_topic_comes_from_homepage_keyword(monkeypatch, no_db):
+    monkeypatch.setattr(LinkBuilding, "_contacts", lambda self, ctx, ps: asyncio.sleep(0))
+    monkeypatch.setattr(LinkBuilding, "_save", staticmethod(lambda site, ps, aid: None))
+    c = ctx(_site())
+    c.search = FakeSearch()
+    home = c.site.homepage.url
+    c.shared["keyword_map"] = {home: {"primary_keyword": "shoe recycling", "cluster": "shoe recycling"},
+                               **{f"{home}blog/{i}": {"primary_keyword": f"guest {i}", "cluster": "interviews"}
+                                  for i in range(5)}}
+    run(LinkBuilding(), c)
+    assert c.search.queries and all(q.startswith("shoe recycling") for q in c.search.queries)
 
 
 def test_public_emails():
