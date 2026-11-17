@@ -182,7 +182,8 @@ class InternalLinking(CheckModule):
     async def _suggestions(self, ctx: AuditContext, indexable: list[PageData], orphan_urls: set[str]) -> CheckResult:
         site = ctx.site
         th = ctx.settings.thresholds
-        sources = [p for p in site.indexable_pages() if p.text]
+        # sorted so proposals (and the cached AI review of them) don't depend on crawl completion order
+        sources = sorted((p for p in site.indexable_pages() if p.text), key=lambda p: p.url)
         if len(sources) < 3:
             return self.not_applicable("links.suggestions", "Too few pages to suggest internal links")
         tfidf = TfIdf({p.url: f"{p.title or ''} {' '.join(t for _, t in p.headings)} {p.text[:20000]}"
@@ -190,7 +191,8 @@ class InternalLinking(CheckModule):
         links_from: dict[str, set[str]] = {p.url: {l.target for l in p.links if l.internal} for p in sources}
         targets = [p for p in indexable if not is_pagination(p.url) and (
                    p.url in orphan_urls or p.inlinks < th.important_page_min_inlinks or (p.depth or 0) > 3)]
-        targets += [site.pages[u] for u in orphan_urls if u in site.pages and site.pages[u] not in targets]
+        targets += [site.pages[u] for u in sorted(orphan_urls) if u in site.pages and site.pages[u] not in targets]
+        targets.sort(key=lambda p: p.url)
         items: list[FindingItem] = []
         for t in targets:
             cands = []
@@ -236,7 +238,8 @@ class InternalLinking(CheckModule):
         """LLM keeps relevant suggestions and writes natural 2-6 word anchors; unreviewed ones are kept as-is."""
         site = ctx.site
         cap = ctx.settings.llm.link_suggestions_reviewed
-        order = sorted(range(len(items)), key=lambda k: -(items[k].evidence.get("similarity") or 0.5))
+        order = sorted(range(len(items)), key=lambda k: (-(items[k].evidence.get("similarity") or 0.5), items[k].url,
+                                                         items[k].evidence.get("add_link_to") or ""))
         to_review = order[:cap]
         decisions: dict[int, dict] = {}
         err: str | None = None

@@ -129,7 +129,8 @@ class LinkBuilding(CheckModule):
             c["authority"] = a
             bonus = {"unlinked_mention": 0.3, "link_gap": 0.2}.get(c["kind"], 0.0)
             c["score"] = round(0.5 * c["relevance"] + 0.3 * ((a or 5) / 100) + bonus, 3)
-        top = sorted(cands.values(), key=lambda c: -c["score"])[:ctx.settings.data.outreach_prospects]
+        # domain as tie-break: candidates arrive in network-completion order, which varies between runs
+        top = sorted(cands.values(), key=lambda c: (-c["score"], c["domain"]))[:ctx.settings.data.outreach_prospects]
         await self._contacts(ctx, top)
         drafts_result = await self._drafts(ctx, top)
         await asyncio.to_thread(self._save, site_domain, top, ctx.audit_id)
