@@ -61,6 +61,7 @@ class PageData:
     depth: int | None = None
     discovered_via: str = "link"  # start | link | sitemap
     blocked_by_robots: bool = False
+    rechecked: bool = False  # an error status was confirmed by a second request
     # rendering
     rendered: bool = False
     js_dependent: bool = False
@@ -177,6 +178,8 @@ class UrlStatus:
     redirects: int = 0
     error: str | None = None
     blocked_by_robots: bool = False
+    content_type: str | None = None
+    rechecked: bool = False  # an error status was confirmed by a second request
 
 
 @dataclass
@@ -202,7 +205,8 @@ class SiteModel:
         if p is not None:
             return UrlStatus(url=url, status=p.status, final_url=p.final_url,
                              redirects=len(p.redirect_chain), error=p.error,
-                             blocked_by_robots=p.blocked_by_robots)
+                             blocked_by_robots=p.blocked_by_robots, content_type=p.content_type or None,
+                             rechecked=p.rechecked)
         return self.url_status.get(url)
 
     def final_status_of(self, url: str) -> int | None:

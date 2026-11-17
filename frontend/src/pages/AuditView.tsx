@@ -109,6 +109,7 @@ function Overview({ a, onAgent }: { a: any; onAgent: (key: string) => void }) {
         <div>
           <div className="grade">{plain.grade?.label}</div>
           <div>{plain.grade?.sentence}</div>
+          {plain.coverage_sentence && <div style={{ marginTop: 6 }}>🔍 {plain.coverage_sentence}</div>}
           <div className="muted small">
             {plain.counts_sentence}
             {a.coverage != null && a.coverage < 100 && ` We could test ${a.coverage}% of what we look at; the rest needs extra access.`}
@@ -140,6 +141,15 @@ function Overview({ a, onAgent }: { a: any; onAgent: (key: string) => void }) {
           ))}
         </ol>
       ) : <p className="muted">Nothing urgent. Well done!</p>}
+      {plain.access?.length > 0 && (
+        <>
+          <h2>What we couldn't check, and what's needed</h2>
+          <p className="muted small">Not counted in the score. Most need a free Google tool connected or a setting switched on.</p>
+          {plain.access.map((g: any) => (
+            <div key={g.need} className="card"><b>⚪ {g.need}</b><div className="muted small">{g.checks.join(" · ")}</div></div>
+          ))}
+        </>
+      )}
       <p className="muted small">
         API usage for this audit: ${a.cost?.total_usd ?? 0} total · ${a.cost?.llm_usd ?? 0} AI · {a.cost?.search_queries ?? 0} web
         searches · {a.cost?.pagespeed_calls ?? 0} speed tests (free; cached results not counted).
@@ -157,7 +167,13 @@ function PlainBody({ f, showAgent = false }: { f: Finding; showAgent?: boolean }
       <div className="kv"><b>What we found</b><span>{f.plain_found || f.summary}</span></div>
       {problem && <div className="kv"><b>Why it matters</b><span>{f.plain_why || f.why}</span></div>}
       {problem && <div className="kv"><b>What to do</b><span>{f.plain_do || f.fix}</span></div>}
-      {problem && f.plain_who && <div className="muted small">👤 Who can do it: {f.plain_who}</div>}
+      {problem && f.plain_who && (
+        <div className="muted small">
+          👤 Who can do it: {f.plain_who}
+          {f.confidence && <> · 🎯 How sure we are: <b>{f.confidence.level}</b> ({f.confidence.basis})</>}
+          {f.sources?.length > 0 && <> · 📊 Source: {f.sources.join(", ")}</>}
+        </div>
+      )}
     </>
   );
 }
@@ -215,7 +231,9 @@ function TechDetails({ f }: { f: Finding }) {
           )}
         </div>
       )}
-      {f.sources?.length > 0 && <div className="small muted">Source: {f.sources.join(", ")}</div>}
+      {f.sources?.length > 0 && (
+        <div className="small muted">Source: {f.sources.join(", ")}{f.confidence && ` · Confidence: ${f.confidence.level} (${f.confidence.basis})`}</div>
+      )}
     </div>
   );
 }

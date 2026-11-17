@@ -42,3 +42,19 @@ def test_agent_summaries_verdicts():
     assert [a["name"] for a in ag] == ["Search Listing Agent", "Image Agent"]
     assert ag[0]["tone"] == "FAIL" and ag[0]["verdict"] == "1 thing to fix, 1 to improve"
     assert ag[1]["verdict"] == "All good"
+
+
+def test_coverage_confidence_and_access():
+    from app.reports.plain import access_groups, confidence, coverage_sentence
+    assert "single page" in coverage_sentence({"pages_fetched": 1}, False, 0, True)
+    assert "limit set for this audit" in coverage_sentence(
+        {"pages_fetched": 100, "limit_reached": True, "link_crawl_complete": False}, True, 250, False)
+    assert coverage_sentence({"pages_fetched": 40, "link_crawl_complete": True}, True, 38, False) == \
+        "Our agents found and checked all 40 pages reachable by following links and your page list (sitemap) of 38 addresses."
+    assert confidence("content.gaps", "WARNING")["level"] == "Medium"
+    assert confidence("tech.status_4xx", "FAIL") == {"level": "High", "basis": "Measured directly on your website."}
+    assert confidence("tech.status_4xx", "NOT_CHECKED") is None
+    g = access_groups([_f(status="NOT_CHECKED", reason="Requires Google Search Console access", plain_title="A"),
+                       _f(status="NOT_CHECKED", reason="This module is not built yet", plain_title="B"),
+                       _f(status="NOT_CHECKED", reason="Search Console needed", plain_title="C")])
+    assert g[0]["checks"] == ["A", "C"] and "later update" in g[-1]["need"]

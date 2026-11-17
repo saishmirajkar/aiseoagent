@@ -14,7 +14,7 @@ interface AuditRow {
 
 const empty = {
   url: "", max_pages: "", business_type: "", country: "", language: "", keywords: "",
-  competitors: ["", "", ""], business_name: "", address: "", phone: "", brand: "",
+  competitors: ["", "", ""], business_name: "", address: "", phone: "", brand: "", audience: "",
 };
 
 export default function Home() {
@@ -39,7 +39,7 @@ export default function Home() {
     setErr("");
     const body: any = { url: form.url.trim() };
     if (form.max_pages) body.max_pages = Number(form.max_pages);
-    for (const k of ["business_type", "country", "language", "business_name", "address", "phone", "brand"]) {
+    for (const k of ["business_type", "audience", "country", "language", "business_name", "address", "phone", "brand"]) {
       const v = (form as any)[k].trim();
       if (v) body[k] = v;
     }
@@ -73,6 +73,9 @@ export default function Home() {
                                    onChange={(e) => set("max_pages", e.target.value)} placeholder="100" /></label>
             <label>Business type<input value={form.business_type} onChange={(e) => set("business_type", e.target.value)}
                                        placeholder="e.g. dental clinic" /></label>
+            <label className="span2">Who are the customers? (target audience)
+              <input value={form.audience} onChange={(e) => set("audience", e.target.value)}
+                     placeholder="e.g. karting track owners, amusement parks and racing clubs in India" /></label>
             <label>Target country<input value={form.country} onChange={(e) => set("country", e.target.value)} placeholder="e.g. US" /></label>
             <label>Language<input value={form.language} onChange={(e) => set("language", e.target.value)} placeholder="e.g. en" /></label>
             <label className="span2">Primary keywords (comma separated)

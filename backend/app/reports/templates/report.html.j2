@@ -56,6 +56,7 @@ dl.glossary dt{font-weight:650;margin-top:8px}dl.glossary dd{margin:0 0 0 0;colo
     <div>
       <div class="grade">{{ plain.grade.label }}</div>
       <div>{{ plain.grade.sentence }}</div>
+      {% if plain.coverage_sentence %}<div style="margin-top:6px">🔍 {{ plain.coverage_sentence }}</div>{% endif %}
       <div class="muted small">{{ plain.counts_sentence }}{% if coverage is not none and coverage < 100 %} We could test {{ coverage }}% of what we look at; the rest needs extra access (explained below).{% endif %}</div>
     </div>
   </div>
@@ -86,7 +87,7 @@ dl.glossary dt{font-weight:650;margin-top:8px}dl.glossary dd{margin:0 0 0 0;colo
     <p class="kv"><b>What we found</b> {{ f.plain_found }}</p>
     <p class="kv"><b>Why it matters</b> {{ f.plain_why }}</p>
     <p class="kv"><b>What to do</b> {{ f.plain_do }}</p>
-    <div class="who">👤 Who can do it: {{ f.plain_who }}</div>
+    <div class="who">👤 Who can do it: {{ f.plain_who }}{% if f.confidence %} · 🎯 How sure we are: <b>{{ f.confidence.level }}</b> ({{ f.confidence.basis }}){% endif %}{% if f.sources %} · 📊 Source: {{ f.sources|join(', ') }}{% endif %}</div>
   </div></li>
 {% endfor %}
 </ol>
@@ -106,7 +107,7 @@ dl.glossary dt{font-weight:650;margin-top:8px}dl.glossary dd{margin:0 0 0 0;colo
     <p class="kv"><b>What we found</b> {{ f.plain_found }}</p>
     <p class="kv"><b>Why it matters</b> {{ f.plain_why }}</p>
     <p class="kv"><b>What to do</b> {{ f.plain_do }}</p>
-    <div class="who">👤 Who can do it: {{ f.plain_who }}</div>
+    <div class="who">👤 Who can do it: {{ f.plain_who }}{% if f.confidence %} · 🎯 How sure we are: <b>{{ f.confidence.level }}</b> ({{ f.confidence.basis }}){% endif %}{% if f.sources %} · 📊 Source: {{ f.sources|join(', ') }}{% endif %}</div>
     {% include "_tech.html.j2" %}
   </div>
   {% endfor %}
@@ -122,6 +123,15 @@ dl.glossary dt{font-weight:650;margin-top:8px}dl.glossary dd{margin:0 0 0 0;colo
   {% endif %}
 </div>
 {% endfor %}
+
+{% if plain.access %}
+<h2>What we couldn't check, and what's needed</h2>
+<p class="lead">These checks are not counted in your score. Most need access to a free Google tool or a setting switched on.</p>
+{% for g in plain.access %}
+<div class="card issue"><h3>⚪ {{ g.need }}</h3>
+  <p class="muted small" style="margin:4px 0 0">{{ g.checks|join(' · ') }}</p></div>
+{% endfor %}
+{% endif %}
 
 <h2>Words you might see</h2>
 <dl class="glossary">

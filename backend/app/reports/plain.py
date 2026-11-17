@@ -101,10 +101,14 @@ P: dict[str, dict[str, str]] = {
                                 "bad": "where most of the text is the same as on other pages",
                                 "why": "If most of a page is repeated text (often leftover template text), it offers nothing new.",
                                 "do": "Remove leftover template text and write something specific for each page."},
-    "content.h1": {"t": "One main heading per page",
-                   "bad": "without exactly one main heading",
-                   "why": "The main heading tells visitors and Google what the page is about at a glance.",
-                   "do": "Give every page one clear main heading (the 'H1') that says what the page is about."},
+    "content.h1_missing": {"t": "Every page has a main heading",
+                           "bad": "without a main heading",
+                           "why": "The main heading tells visitors and Google what the page is about at a glance.",
+                           "do": "Give each page one clear main heading (the 'H1') that says what the page is about."},
+    "content.h1_multiple": {"t": "One main heading per page",
+                            "bad": "with more than one different main heading",
+                            "why": "Several different main headings blur what the page is about. This is a minor issue.",
+                            "do": "Keep one main heading and turn the others into sub-headings."},
     "content.heading_order": {"t": "Headings in a sensible order",
                               "bad": "with headings that skip levels",
                               "why": "A tidy heading structure helps Google and screen readers understand the page.",
@@ -383,16 +387,16 @@ P: dict[str, dict[str, str]] = {
                                  "why": "This shows exactly how Google treats your most important pages.",
                                  "do": "Review the details in Google Search Console."},
     # 8 performance
-    "perf.lcp": {"t": "How fast the main content appears",
-                 "bad": "where the main content appears slowly (over 2.5 seconds)",
-                 "why": "People leave slow pages, and Google uses speed when ranking.",
+    "perf.field_cwv": {"t": "Speed for your real visitors (Google's data)",
+                       "bad": "Google's data from real visitors shows your site is slower or jumpier than recommended.",
+                       "why": "Google uses this real-visitor data when ranking, and slow pages lose customers.",
+                       "do": "Fix the causes listed in the lab test checks below; Google's data improves over the next 28 days."},
+    "perf.lcp": {"t": "How fast the main content appears (lab test)",
+                 "bad": "where the main content appeared slowly in Google's lab test (over 2.5 seconds)",
+                 "why": "This simulated test shows what slows your page down, even before real-visitor data exists.",
                  "do": "Compress big images and ask your designer to speed up the top of the page."},
-    "perf.inp": {"t": "How quickly the page reacts to taps and clicks",
-                 "bad": "where the page reacts slowly to taps and clicks",
-                 "why": "A page that feels stuck frustrates visitors; Google measures this too.",
-                 "do": "Ask your developer to reduce heavy scripts."},
-    "perf.cls": {"t": "Page stays still while loading",
-                 "bad": "where the page jumps around while loading",
+    "perf.cls": {"t": "Page stays still while loading (lab test)",
+                 "bad": "where the page jumped around while loading in Google's lab test",
                  "why": "Jumping content makes people tap the wrong thing; Google measures this.",
                  "do": "Ask your designer to reserve space for images, ads and banners."},
     "perf.tbt": {"t": "Page isn't frozen while loading",
@@ -513,6 +517,10 @@ P: dict[str, dict[str, str]] = {
                       "bad": "The site is missing some trust signals (such as an About page, contact details or a privacy policy).",
                       "why": "Visitors, Google and AI assistants trust sites more when they can see who runs them.",
                       "do": "Add the missing pages and show your phone number and address on the homepage."},
+    "geo.fact_consistency": {"t": "The same facts everywhere on your site",
+                             "bad": "Your site states facts that contradict each other, such as different founding years or years of experience.",
+                             "why": "Visitors, Google and AI assistants don't know which number is true, and AI answers may repeat the wrong one.",
+                             "do": "Use one founding year and one experience figure everywhere. If it's an animated counter, ask your designer to put the final number in the page code."},
 }
 
 # NOT_CHECKED reasons in plain words (first match wins); the original reason stays in the technical details
@@ -577,6 +585,67 @@ def _found(d: dict[str, Any], spec: dict[str, str], population: str | None) -> s
     return spec.get("bad") or d.get("summary") or ""
 
 
+# How sure a finding is, and why. Default: measured directly on the site.
+_AI = ("Medium", "AI judgement from your page content. Review it before acting.")
+_RULE = ("Medium", "Rule of thumb applied to your page content.")
+_SAMPLE = ("Medium", "Based on a sample of search results, not a complete list.")
+CONFIDENCE: dict[str, tuple[str, str]] = {
+    **dict.fromkeys(["kw.mapping", "kw.cannibalization", "content.gaps", "meta.keyword_in_title",
+                     "meta.intent_alignment", "links.suggestions", "img.alt_generation", "geo.answer_first",
+                     "mentions.reviews", "out.prospects", "out.drafts", "ai.visibility"], _AI),
+    **dict.fromkeys(["content.thin", "content.duplicates", "content.repeated_blocks", "content.readability",
+                     "kw.opportunities", "bl.suspicious", "tech.js_dependent", "schema.missing_types",
+                     "geo.question_headings", "geo.faq", "geo.sources_and_stats", "geo.authorship",
+                     "geo.eeat_site", "geo.fact_consistency", "img.filename"], _RULE),
+    **dict.fromkeys(["bl.discovered", "mentions.unlinked", "mentions.share", "bl.link_gap"], _SAMPLE),
+    "kw.search_volume": ("Medium", "Google Trends shows relative interest only, not exact search numbers."),
+    "kw.difficulty": ("Medium", "Estimated from the sites ranking today; not an exact score."),
+    "perf.field_cwv": ("High", "Google's own measurements from real Chrome visitors (last 28 days)."),
+    "perf.lcp": ("High", "Google's lab test on a simulated device; real visitors may differ."),
+    "perf.cls": ("High", "Google's lab test on a simulated device; real visitors may differ."),
+    "perf.tbt": ("High", "Google's lab test on a simulated device; real visitors may differ."),
+    "perf.score": ("High", "Google's lab test on a simulated device; real visitors may differ."),
+    "perf.opportunities": ("High", "Google's lab test on a simulated device; real visitors may differ."),
+    "bl.authority": ("High", "Common Crawl web graph (public data, updated a few times a year)."),
+}
+_MEASURED = ("High", "Measured directly on your website.")
+
+
+def confidence(check_id: str, status: str) -> dict[str, str] | None:
+    if status in ("NOT_CHECKED", "N/A"):
+        return None
+    level, basis = CONFIDENCE.get(check_id, _MEASURED)
+    return {"level": level, "basis": basis}
+
+
+def coverage_sentence(crawl: dict, sitemap_found: bool | None, sitemap_count: int | None,
+                      one_page: bool) -> str:
+    """How many pages were checked and how they were found, in plain words."""
+    n = crawl.get("pages_fetched") or 0
+    if crawl.get("robots_unreachable"):
+        return ("Your site's robots.txt file couldn't be read, so to be safe our agents checked only the start page "
+                "(this is what Google does too).")
+    if one_page and not sitemap_found:
+        return ("Your website is a single page: every link on it jumps to a section of the same page, and there is "
+                "no page list (sitemap). So our agents checked that one page in full.")
+    sm = f" and your page list (sitemap) of {sitemap_count} addresses" if sitemap_found and sitemap_count else ""
+    if crawl.get("limit_reached") and not crawl.get("link_crawl_complete"):
+        return (f"Our agents checked {n} pages, the limit set for this audit, found by following links{sm}. Your site "
+                "has more pages; raise the page limit when starting an audit for a complete check.")
+    return f"Our agents found and checked all {n} pages reachable by following links{sm}."
+
+
+def access_groups(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """NOT_CHECKED findings grouped by what is needed to check them (planned agents last)."""
+    groups: dict[str, list[str]] = {}
+    for f in findings:
+        if f["status"] != "NOT_CHECKED":
+            continue
+        groups.setdefault(plain_reason(f.get("reason")), []).append(f.get("plain_title") or f["title"])
+    later = "This agent is still being built and will join in a later update."
+    return [{"need": k, "checks": v} for k, v in sorted(groups.items(), key=lambda kv: (kv[0] == later, -len(kv[1])))]
+
+
 def plain_fields(d: dict[str, Any], population: str | None = None) -> dict[str, Any]:
     """Plain-language fields for one finding dict (as produced by reports.build.finding_dict)."""
     spec = P.get(d["check_id"], {})
@@ -590,6 +659,7 @@ def plain_fields(d: dict[str, Any], population: str | None = None) -> dict[str, 
         "plain_why": spec.get("why") or d.get("why") or "",
         "plain_do": spec.get("do") or d.get("fix") or "",
         "plain_who": spec.get("who") or agent["who"],
+        "confidence": confidence(d["check_id"], d["status"]),
     }
 
 

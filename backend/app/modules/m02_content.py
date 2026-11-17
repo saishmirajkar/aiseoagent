@@ -98,10 +98,14 @@ class ContentOptimization(CheckModule):
                   "template or placeholder text is a common cause.",
                   "Remove placeholder/template text and replace it with content specific to each page.",
                   population="pages"),
-        CheckSpec("content.h1", "Missing or multiple H1 headings", M, L,
-                  "The H1 states the page topic for users and search engines; there should be exactly one.",
-                  "Give each page exactly one descriptive H1 that includes its main topic.", population="pages",
+        CheckSpec("content.h1_missing", "Missing H1 heading", M, L,
+                  "The H1 states the page topic for users and search engines.",
+                  "Add one descriptive H1 that includes the page's main topic.", population="pages",
                   missing_label="H1 heading missing on {affected} page(s)"),
+        CheckSpec("content.h1_multiple", "Multiple different H1 headings", L, L,
+                  "Several different H1s blur what the page is about (Google tolerates it, but one clear H1 is "
+                  "the convention). Identical copies, e.g. hidden mobile/desktop versions, are not counted.",
+                  "Keep one H1 for the page topic and turn the others into H2s.", population="pages"),
         CheckSpec("content.heading_order", "Skipped heading levels", L, L,
                   "Skipping levels (H2 → H4) weakens the document outline for search engines and screen readers.",
                   "Use headings in order (H1 → H2 → H3) and don't pick levels for styling.", population="pages"),
@@ -164,16 +168,23 @@ class ContentOptimization(CheckModule):
             r.affected = len({u for i in blocks for u in [i.url, *i.also_on]})
         out.append(r)
 
-        h1 = []
+        missing_h1, multi_h1 = [], []
         for p in pages:
-            n_h1 = sum(1 for lvl, t in p.headings if lvl == 1)
-            if n_h1 == 0:
-                h1.append(FindingItem(p.url, {"h1_count": 0, "problem": "missing"}))
-            elif n_h1 > 1:
-                h1.append(FindingItem(p.url, {"h1_count": n_h1, "h1": [t for lvl, t in p.headings if lvl == 1][:5],
-                                              "problem": "multiple"}))
-        out.append(self.by_population("content.h1", h1, n, fail=any(i.evidence["problem"] == "missing" for i in h1),
-                                      summary="Pages without exactly one H1"))
+            texts = [t for lvl, t in p.headings if lvl == 1]
+            distinct = list(dict.fromkeys(" ".join(t.lower().split()) for t in texts if t.strip()))
+            if not distinct:
+                missing_h1.append(FindingItem(p.url, {"h1_count": len(texts), "problem": "no H1"
+                                                      if not texts else "H1 present but empty"}))
+            elif len(distinct) > 1:
+                multi_h1.append(FindingItem(p.url, {"distinct_h1": len(distinct), "h1_tags": len(texts),
+                                                    "h1": list(dict.fromkeys(texts))[:5]}))
+        out.append(self.by_population("content.h1_missing", missing_h1, n, summary="Pages without an H1"))
+        r = self.by_population("content.h1_multiple", multi_h1, n, fail=False,
+                               summary="Pages with more than one different H1")
+        dup_only = sum(1 for p in pages if len([1 for lvl, _ in p.headings if lvl == 1]) > 1) - len(multi_h1)
+        if dup_only > 0:
+            r.summary += f" ({dup_only} page(s) repeat the same H1, e.g. hidden mobile/desktop copies; not counted)"
+        out.append(r)
 
         skips = []
         for p in pages:

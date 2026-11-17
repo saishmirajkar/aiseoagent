@@ -78,3 +78,27 @@ def esc_attr(s: str) -> str:
 
 def truncate(items: list, limit: int = MAX_ITEMS) -> list:
     return items[:limit]
+
+
+ERROR_PAGE_PATH = re.compile(r"^/(404|404\.html?|not-found|page-not-found|error-404)/?$", re.I)
+
+
+def resource_kind(url: str, content_type: str | None = None) -> str:
+    """'page' for HTML pages, otherwise a short label for the file type (e.g. 'PDF file', 'image')."""
+    from app.crawler.urls import NON_PAGE_EXTENSIONS, path_extension
+    ct = (content_type or "").lower()
+    ext = path_extension(url)
+    if "html" in ct or (not ct and ext not in NON_PAGE_EXTENSIONS):
+        return "page"
+    if ct.startswith("image/") or ext in {"jpg", "jpeg", "png", "gif", "webp", "avif", "svg", "ico", "bmp"}:
+        return "image"
+    if ext == "pdf" or "pdf" in ct:
+        return "PDF file"
+    if ext in {"js", "mjs", "css", "json", "xml", "txt", "map"} or "javascript" in ct or "css" in ct:
+        return "script/style file"
+    return f"{ext.upper()} file" if ext else "file"
+
+
+def is_own_error_page(url: str) -> bool:
+    """The site's own 'page not found' page (e.g. /404) is supposed to return 404."""
+    return bool(ERROR_PAGE_PATH.match(urlsplit(url).path or "/"))

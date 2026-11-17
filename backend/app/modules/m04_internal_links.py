@@ -8,7 +8,7 @@ from urllib.parse import urlsplit
 from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Level, Need, Status,
 )
-from app.modules.common import is_utility
+from app.modules.common import is_utility, resource_kind
 from app.llm.client import BOOL, INT, LLMError, STR, arr, obj
 from app.llm.manual import AwaitingAnswer
 from app.llm.summaries import chunks
@@ -112,21 +112,28 @@ class InternalLinking(CheckModule):
                     linked.add(l.target)
         sm = site.sitemap_urls
         orphans = []
+        non_html = 0
         for u in sm:
             if u in linked or (home and u == home.url) or is_utility(u):
                 continue
             p = site.pages.get(u)
+            st = site.status_of(u)
+            if resource_kind(u, (p.content_type if p else None) or (st.content_type if st else None)) != "page" \
+                    or (p is not None and not p.is_html):
+                non_html += 1  # images, PDFs, feeds and scripts are not pages, so they can't be orphan pages
+                continue
             if p is not None and not p.indexable:
                 continue
-            st = site.status_of(u)
             if p is None and (st is None or st.status != 200 or st.redirects):
                 continue  # only confirmed live pages
             orphans.append(FindingItem(u, {"in_sitemap": True, "crawled": p is not None}))
         if not sm:
             out.append(self.not_applicable("links.orphans", "No sitemap to compare against"))
         else:
-            r = self.by_population("links.orphans", orphans, len(sm), fail=not truncated,
-                                   summary=f"{len(orphans)} sitemap page(s) with no internal links{caveat}")
+            r = self.by_population("links.orphans", orphans, len(sm) - non_html, fail=not truncated,
+                                   summary=f"{len(orphans)} sitemap page(s) with no internal links{caveat}"
+                                           + (f" ({non_html} non-HTML sitemap entries such as images or PDFs "
+                                              "were ignored)" if non_html else ""))
             if orphans and complete:
                 r.summary += (" — every page reachable by following links from the homepage was crawled, "
                               "so these are only discoverable through the sitemap. Check listing pages "

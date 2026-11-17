@@ -199,6 +199,8 @@ class Crawler:
         # status checks for things we did not crawl
         await self._report("links", force=True, message="Checking links and sitemap URLs")
         await self._check_uncrawled(sm.urls)
+        await self._report("links", force=True, message="Double-checking errors")
+        await self._verify_errors()
         await self._report("images", force=True, message="Checking images")
         images = await self._probe_images()
         await self._render_samples()
@@ -372,7 +374,8 @@ class Crawler:
                 r = await self.fetcher.check(u)
                 self.url_status[u] = UrlStatus(url=u, status=r.status, final_url=r.final_url,
                                                redirects=len(r.chain), error=r.error,
-                                               blocked_by_robots=r.blocked_redirect)
+                                               blocked_by_robots=r.blocked_redirect,
+                                               content_type=r.content_type or None)
                 await self._report("links", message=f"Checked {u}")
 
         await asyncio.gather(*(one(u) for u in urls))
@@ -395,6 +398,44 @@ class Crawler:
                    and u not in internal][: self.cfg.sitemap_check_limit]
         await self._check_many(todo + sm_left)
         await self._check_many([u for u, _ in external.most_common(self.cfg.max_external_link_checks)], 8)
+
+    async def _verify_errors(self, pause_s: float = 3.0, limit: int = 200) -> None:
+        """Second look at every internal error before it is reported. Timeouts, 5xx, rate limits and even
+        404s are requested again after a pause; a URL that recovers is treated as working (pages are
+        re-parsed), one that fails again is marked ``rechecked`` so reports can say it was confirmed."""
+        def bad(status: int | None, error: str | None) -> bool:
+            return (status is None and bool(error)) or (status is not None and status >= 400)
+
+        pages = [u for u, p in self.pages.items() if self.scope.is_internal(u) and not p.blocked_by_robots
+                 and not p.redirect_chain and bad(p.status, p.error)]
+        others = [u for u, s in self.url_status.items() if self.scope.is_internal(u) and not s.blocked_by_robots
+                  and not s.redirects and bad(s.status, s.error)]
+        if not pages and not others:
+            return
+        await asyncio.sleep(pause_s)
+        sem = asyncio.Semaphore(3)
+        sink: asyncio.PriorityQueue = asyncio.PriorityQueue()  # links found on recovered pages are not crawled
+
+        async def page(u: str) -> None:
+            async with sem:
+                old = self.pages[u]
+                res = await self.fetcher.fetch(u, html_only=True, retries=1)
+                if res.status is not None and res.status < 400:
+                    await self._ingest(u, res, old.depth, old.discovered_via, sink)
+                else:
+                    old.rechecked = True
+
+        async def other(u: str) -> None:
+            async with sem:
+                r = await self.fetcher.fetch(u, method="GET", read_body=False, retries=1)
+                if r.status is not None and r.status < 400:
+                    self.url_status[u] = UrlStatus(url=u, status=r.status, final_url=r.final_url,
+                                                   redirects=len(r.chain), error=r.error,
+                                                   content_type=r.content_type or None)
+                else:
+                    self.url_status[u].rechecked = True
+
+        await asyncio.gather(*(page(u) for u in pages[:limit]), *(other(u) for u in others[:limit]))
 
     async def _probe_images(self) -> dict[str, ImageAsset]:
         counts: Counter[str] = Counter()

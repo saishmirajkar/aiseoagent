@@ -1,14 +1,15 @@
 """Module 8: Website Performance (PageSpeed Insights, mobile + desktop).
 
 Tests the homepage plus one representative URL per page template (budget-capped).
-Core Web Vitals use real-user field data (CrUX) when Google has it, else Lighthouse lab data;
-each value is labelled with its source.
+Real-user Core Web Vitals (CrUX field data) and Lighthouse lab results are separate checks, so the two
+kinds of data are never mixed; each value is labelled with its source.
 """
 from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
 from datetime import timedelta
+from urllib.parse import urlsplit
 
 from app import cache, usage
 from app.config import env
@@ -80,19 +81,20 @@ class Performance(CheckModule):
     needs = frozenset({Need.PAGES})
     integrations = frozenset({Integration.PAGESPEED})
     checks = (
-        CheckSpec("perf.lcp", "Largest Contentful Paint (LCP ≤ 2.5 s)", H, M,
-                  "LCP measures how fast the main content appears; it is a Core Web Vital used in ranking.",
+        CheckSpec("perf.field_cwv", "Core Web Vitals from real visitors (Chrome UX Report)", H, M,
+                  "Google ranks with Core Web Vitals measured on real Chrome users over the last 28 days "
+                  "(75th percentile): LCP ≤ 2.5 s, INP ≤ 200 ms, CLS ≤ 0.1.",
+                  "Fix the metric that is outside 'good' (see the lab checks and opportunities for causes); "
+                  "field data updates over the following 28 days."),
+        CheckSpec("perf.lcp", "Largest Contentful Paint – lab test (≤ 2.5 s)", M, M,
+                  "Lab LCP (Lighthouse, simulated device) shows how fast the main content appears and why.",
                   "Optimise the LCP element: compress/resize the hero image, preload it, cut render-blocking "
                   "CSS/JS and reduce server response time.", population="tests"),
-        CheckSpec("perf.inp", "Interaction to Next Paint (INP ≤ 200 ms)", H, M,
-                  "INP measures how quickly the page responds to taps and clicks (Core Web Vital).",
-                  "Break up long JavaScript tasks, defer third-party scripts, and reduce main-thread work.",
-                  population="tests"),
-        CheckSpec("perf.cls", "Cumulative Layout Shift (CLS ≤ 0.1)", H, L,
-                  "CLS measures unexpected layout movement (Core Web Vital); it frustrates users.",
+        CheckSpec("perf.cls", "Cumulative Layout Shift – lab test (≤ 0.1)", M, L,
+                  "Lab CLS shows unexpected layout movement during load.",
                   "Set width/height on images and embeds, reserve space for ads/banners, avoid inserting "
                   "content above existing content.", population="tests"),
-        CheckSpec("perf.tbt", "Total Blocking Time (lab proxy for INP, ≤ 200 ms)", M, M,
+        CheckSpec("perf.tbt", "Total Blocking Time – lab test (proxy for INP, ≤ 200 ms)", M, M,
                   "High blocking time in the lab usually means slow responses to user input.",
                   "Reduce and split JavaScript; defer non-critical scripts.", population="tests"),
         CheckSpec("perf.score", "Lighthouse performance score (≥ 90)", M, M,
@@ -127,9 +129,9 @@ class Performance(CheckModule):
             return [self.not_checked(c.id, reason) for c in self.checks]
         failed = [FindingItem(r.url, {"strategy": r.strategy, "error": r.error}) for r in results if r.error]
 
-        out = [self._cwv("perf.lcp", ok, "lcp_ms", "s", lab_ok=True),
-               self._cwv("perf.inp", ok, "inp_ms", "ms", lab_ok=False),
-               self._cwv("perf.cls", ok, "cls", "", lab_ok=True),
+        out = [self._field_cwv(ok),
+               self._cwv("perf.lcp", ok, "lcp_ms"),
+               self._cwv("perf.cls", ok, "cls"),
                self._lab("perf.tbt", ok, "tbt_ms"),
                self._score(ok),
                self._opportunities(ok)]
@@ -148,38 +150,65 @@ class Performance(CheckModule):
             return f"{v:.2f}"
         return f"{v / 1000:.1f} s" if metric == "lcp_ms" else f"{round(v)} ms"
 
-    def _cwv(self, cid: str, results: list[PsiResult], metric: str, unit: str, *, lab_ok: bool) -> CheckResult:
-        items, all_items, sources, measured, worst = [], [], set(), 0, "good"
+    def _field_cwv(self, results: list[PsiResult]) -> CheckResult:
+        """Real-user CrUX data only: URL-level when Google has it, otherwise the whole origin (labelled)."""
+        entries: dict[tuple[str, str], dict] = {}
         for r in results:
-            if metric in r.field:
-                v, src = r.field[metric], SOURCE_FIELD
-            elif metric in r.origin_field:
-                v, src = r.origin_field[metric], SOURCE_ORIGIN
-            elif lab_ok and metric in r.lab:
-                v, src = r.lab[metric], SOURCE_LAB
+            if r.field:
+                key, data, scope, src = (r.url, r.strategy), r.field, "this page", SOURCE_FIELD
+            elif r.origin_field:
+                origin = "{0.scheme}://{0.netloc}/".format(urlsplit(r.final_url or r.url))
+                key, data, scope, src = (origin, r.strategy), r.origin_field, "whole site (origin)", SOURCE_ORIGIN
             else:
                 continue
+            if key in entries:
+                continue
+            ev: dict = {"device": r.strategy, "scope": scope, "source": src}
+            worst = "good"
+            for metric, label in (("lcp_ms", "LCP"), ("inp_ms", "INP"), ("cls", "CLS")):
+                if metric in data:
+                    rating = rate(metric, data[metric])
+                    ev[label] = f"{self._fmt(metric, data[metric])} ({rating})"
+                    if rating == "poor" or (rating != "good" and worst == "good"):
+                        worst = rating
+            ev["assessment"] = worst
+            entries[key] = {"url": key[0], "ev": ev, "src": src}
+        if not entries:
+            return self.not_checked("perf.field_cwv", "Google has no real-visitor (Chrome UX Report) data for these "
+                                                      "pages or the site yet; it needs enough Chrome traffic. The lab "
+                                                      "test results are the only speed measurement.")
+        bad = [e for e in entries.values() if e["ev"]["assessment"] != "good"]
+        status = (Status.PASS if not bad else Status.FAIL if any(e["ev"]["assessment"] == "poor" for e in bad)
+                  else Status.WARNING)
+        items = [FindingItem(e["url"], e["ev"]) for e in (bad or entries.values())]
+        summary = (f"All {len(entries)} real-visitor measurement(s) are 'good'" if not bad
+                   else f"{len(bad)} of {len(entries)} real-visitor measurement(s) outside 'good'")
+        return CheckResult(spec=self.spec("perf.field_cwv"), status=status, summary=summary, items=items,
+                           affected=len(bad), total=len(entries), sources=sorted({e["src"] for e in entries.values()}))
+
+    def _cwv(self, cid: str, results: list[PsiResult], metric: str) -> CheckResult:
+        """Lab (Lighthouse) value of a Core Web Vital; real-user data is reported by perf.field_cwv."""
+        items, all_items, measured, worst = [], [], 0, "good"
+        for r in results:
+            if metric not in r.lab:
+                continue
+            v = r.lab[metric]
             measured += 1
-            sources.add(src)
             rating = rate(metric, v)
-            item = FindingItem(r.url, {"strategy": r.strategy, "value": self._fmt(metric, v),
-                                       "rating": rating, "source": src})
+            item = FindingItem(r.url, {"device": r.strategy, "value": self._fmt(metric, v), "rating": rating,
+                                       "source": SOURCE_LAB})
             all_items.append(item)
             if rating != "good":
                 worst = "poor" if "poor" in (rating, worst) else "needs improvement"
                 items.append(item)
         if measured == 0:
-            if metric == "inp_ms":
-                return self.not_checked(cid, "INP needs real-user data and Google has no CrUX data for these "
-                                             "URLs or the origin (usually too little Chrome traffic). "
-                                             "Lab Total Blocking Time is reported as a proxy.")
-            return self.not_checked(cid, "No measurement returned")
+            return self.not_checked(cid, "No lab measurement returned")
         status = Status.PASS if not items else Status.FAIL if worst == "poor" else Status.WARNING
-        summary = (f"All {measured} test(s) within the 'good' threshold" if not items
-                   else f"{len(items)} of {measured} test(s) outside 'good'")
+        summary = (f"All {measured} lab test(s) within the 'good' threshold" if not items
+                   else f"{len(items)} of {measured} lab test(s) outside 'good'")
         # passing checks keep every measurement as evidence; failing ones list only the failures
         return CheckResult(spec=self.spec(cid), status=status, summary=summary, items=items or all_items,
-                           affected=len(items), total=measured, sources=sorted(sources))
+                           affected=len(items), total=measured, sources=[SOURCE_LAB])
 
     def _lab(self, cid: str, results: list[PsiResult], metric: str) -> CheckResult:
         items, worst = [], "good"

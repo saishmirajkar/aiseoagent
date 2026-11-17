@@ -183,7 +183,7 @@ class CrawlingIndexing(CheckModule):
                 out.append(self.not_applicable(cid, "No sitemap URLs to evaluate"))
         else:
             bad, nonidx = [], []
-            known = 0
+            known = unverified = 0
             off_host = 0
             for u in sm:
                 s = site.status_of(u)
@@ -198,10 +198,14 @@ class CrawlingIndexing(CheckModule):
                 if s.blocked_by_robots:
                     nonidx.append(FindingItem(u, {"problem": "Blocked by robots.txt"}))
                     continue
+                if s.status in (401, 403, 429, 999) and not s.redirects:
+                    unverified += 1  # refused our checker (bot protection): cannot conclude the URL is bad
+                    continue
                 if s.redirects:
                     bad.append(FindingItem(u, {"status": s.status, "redirects_to": s.final_url, "severity": "warning"}))
                 elif s.status != 200:
-                    bad.append(FindingItem(u, {"status": s.status, "error": s.error}))
+                    bad.append(FindingItem(u, {"status": s.status, "error": s.error,
+                                               "confirmed": "failed twice" if s.rechecked else "failed once"}))
                 p = site.pages.get(u)
                 if p is not None and p.is_ok:
                     if p.is_noindex:
@@ -212,7 +216,9 @@ class CrawlingIndexing(CheckModule):
                                                       "canonical": p.canonical_target}))
             hard = [i for i in bad if i.evidence.get("severity") != "warning"]
             r = self.by_population("crawl.sitemap_bad_urls", bad, known + off_host, fail=bool(hard),
-                                   summary=f"{len(bad)} sitemap URL(s) do not return 200 directly")
+                                   summary=f"{len(bad)} sitemap URL(s) do not return 200 directly"
+                                           + (f"; {unverified} refused our checker (HTTP 401/403/429) and were not "
+                                              "counted" if unverified else ""))
             if known < len(sm):
                 r.summary += f" ({known} of {len(sm)} sitemap URLs were checked)"
             out.append(r)

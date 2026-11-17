@@ -7,6 +7,8 @@ Every generated JSON-LD block is validated in code; fields we cannot know from t
 """
 from __future__ import annotations
 
+import copy
+
 import json
 import re
 from collections import Counter, defaultdict
@@ -15,7 +17,9 @@ from urllib.parse import parse_qs, urlsplit
 from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Level, Need, Status,
 )
-from app.modules.schema_rules import canonical_type, is_valid_jsonld, item_name, types_of, validate, SINGLETONS
+from app.modules.schema_rules import (
+    ANY_OF, NESTED, RULES, SINGLETONS, canonical_type, has_prop, is_valid_jsonld, item_name, types_of, validate,
+)
 from app.sitemodel.types import PageData, SiteModel
 
 H, M, L = Level.HIGH, Level.MED, Level.LOW
@@ -151,6 +155,84 @@ def _image(page: PageData) -> str | None:
 
 def _slug_name(seg: str) -> str:
     return re.sub(r"[-_]+", " ", seg).strip().title()
+
+
+PLACEHOLDER = "REPLACE: {}"
+_TEMPLATES = {
+    "address": lambda: {"@type": "PostalAddress", "streetAddress": PLACEHOLDER.format("street"),
+                        "addressLocality": PLACEHOLDER.format("city"), "postalCode": PLACEHOLDER.format("postcode"),
+                        "addressCountry": PLACEHOLDER.format("country code, e.g. IN")},
+    "offers": lambda: {"@type": "Offer", "price": PLACEHOLDER.format("price, e.g. 49999"),
+                       "priceCurrency": PLACEHOLDER.format("currency, e.g. INR"),
+                       "availability": "https://schema.org/InStock"},
+    "author": lambda: {"@type": "Person", "name": PLACEHOLDER.format("author name")},
+    "aggregateRating": lambda: {"@type": "AggregateRating", "ratingValue": PLACEHOLDER.format("average rating"),
+                                "reviewCount": PLACEHOLDER.format("number of reviews")},
+    "acceptedAnswer": lambda: {"@type": "Answer", "text": PLACEHOLDER.format("answer text")},
+}
+
+
+def corrected_jsonld(item: dict, page: PageData) -> dict | None:
+    """The page's own JSON-LD item with missing required/recommended properties added: filled from the page
+    where the value is known (title, description, URL, image, dates, author), otherwise a REPLACE: placeholder.
+    Returns None when nothing is missing."""
+    fixed = copy.deepcopy(item)
+    filled: list[str] = []
+    placeholders: list[str] = []
+    known = {"url": page.url, "mainEntityOfPage": page.url, "name": _headline(page), "headline": _headline(page),
+             "description": page.meta_description, "image": _image(page), "thumbnailUrl": _image(page),
+             "datePublished": (page.dates or {}).get("datePublished"),
+             "dateModified": (page.dates or {}).get("dateModified")}
+    if page.authors:
+        known["author"] = {"@type": "Person", "name": page.authors[0]}
+
+    def fix_node(node: dict, path: str) -> None:
+        for t in types_of(node):
+            ct = canonical_type(t)
+            if not ct:
+                continue
+            rule = RULES[ct]
+            for spec in list(rule.required) + list(rule.recommended):
+                if has_prop(node, spec):
+                    continue
+                prop = spec.split(ANY_OF)[0]
+                if known.get(prop) and path == "":
+                    node[prop] = known[prop]
+                    filled.append(path + prop)
+                else:
+                    node[prop] = _TEMPLATES[prop]() if prop in _TEMPLATES else PLACEHOLDER.format(prop)
+                    placeholders.append(path + prop)
+        for prop, child_type in NESTED.items():
+            val = node.get(prop)
+            for i, child in enumerate(val if isinstance(val, list) else [val] if isinstance(val, dict) else []):
+                if isinstance(child, dict):
+                    if not types_of(child):
+                        child["@type"] = child_type
+                    fix_node(child, f"{path}{prop}[{i}].")
+
+    if not fixed.get("@context"):
+        fixed["@context"] = "https://schema.org"
+        filled.append("@context")
+    fix_node(fixed, "")
+    if not filled and not placeholders:
+        return None
+    code = '<script type="application/ld+json">\n' + json.dumps(fixed, indent=2, ensure_ascii=False) + "\n</script>"
+    note = ("Your existing markup with the missing properties added. "
+            + (f"Filled from the page: {', '.join(filled)}. " if filled else "")
+            + (f"Replace the REPLACE: placeholders with real values (or delete the line if the information "
+               f"doesn't exist): {', '.join(placeholders)}." if placeholders else ""))
+    return {"type": "jsonld", "schema_type": "/".join(types_of(item)), "code": code, "needs_input": placeholders,
+            "filled_from_page": filled, "notes": [note.strip()]}
+
+
+def _merge_fixes(fixes: list[dict]) -> dict | None:
+    if not fixes:
+        return None
+    if len(fixes) == 1:
+        return fixes[0]
+    return {"type": "jsonld", "schema_type": ", ".join(f["schema_type"] for f in fixes),
+            "code": "\n\n".join(f["code"] for f in fixes), "needs_input": [x for f in fixes for x in f["needs_input"]],
+            "notes": [n for f in fixes for n in f["notes"]]}
 
 
 def generate(t: str, page: PageData, site: SiteModel, ctx: AuditContext) -> dict:
@@ -327,6 +409,7 @@ class SchemaMarkup(CheckModule):
                 with_sd += 1
             errs = list(sd.get("errors", []))
             req, rec = [], []
+            corrections: list[dict] = []
             present: set[str] = set()
             by_type: dict[str, list[dict]] = defaultdict(list)
             for item, is_jsonld in items:
@@ -336,18 +419,24 @@ class SchemaMarkup(CheckModule):
                     if ct:
                         present.add(ct)
                         by_type[ct].append(item)
-                for v in validate(item, jsonld=is_jsonld):
+                vals = validate(item, jsonld=is_jsonld)
+                for v in vals:
                     errs += [f"{v.type}: {e}" for e in v.errors]
                     if v.missing_required:
                         req.append({"type": v.type, "missing": v.missing_required, "name": item_name(item)})
                     if v.missing_recommended:
                         rec.append({"type": v.type, "missing": v.missing_recommended})
+                if is_jsonld and any(v.missing_required or v.missing_recommended for v in vals):
+                    fix = corrected_jsonld(item, p)
+                    if fix:
+                        corrections.append(fix)
             if errs:
                 syntax.append(FindingItem(p.url, {"errors": errs[:10]}))
+            fix = _merge_fixes(corrections)
             if req:
-                required.append(FindingItem(p.url, {"items": req[:10]}))
+                required.append(FindingItem(p.url, {"items": req[:10]}, generated_fix=fix))
             if rec:
-                recommended.append(FindingItem(p.url, {"items": rec[:10]}))
+                recommended.append(FindingItem(p.url, {"items": rec[:10]}, generated_fix=None if req else fix))
             conf = []
             for ct, lst in by_type.items():
                 if ct in SINGLETONS and len(lst) > 1:

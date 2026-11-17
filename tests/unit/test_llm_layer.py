@@ -223,8 +223,11 @@ def test_content_deterministic_checks():
     rb = r["content.repeated_blocks"]
     assert rb.status == Status.FAIL and rb.affected == 6 and "photographer" in rb.items[0].evidence["sample"]
     assert BASE + "/blog/post-0" in urls(r["content.thin"])  # little unique text once the block is removed
-    h1 = r["content.h1"]
-    assert h1.status == Status.FAIL and {BASE + "/blog/post-1", BASE + "/blog/post-2"} <= urls(h1)
+    assert r["content.h1_missing"].status == Status.FAIL and BASE + "/blog/post-1" in urls(r["content.h1_missing"])
+    assert r["content.h1_multiple"].status == Status.WARNING and urls(r["content.h1_multiple"]) == {BASE + "/blog/post-2"}
+    s.pages[BASE + "/blog/post-2"].headings = [(1, "Same"), (1, "same "), (2, "C")]  # responsive copies
+    r2 = run(ContentOptimization(), ctx(s))
+    assert BASE + "/blog/post-2" not in urls(r2["content.h1_multiple"]) and "not counted" in r2["content.h1_multiple"].summary
     assert urls(r["content.heading_order"]) == {BASE + "/blog/post-2"}
     assert r["content.gaps"].status == Status.NOT_CHECKED
 

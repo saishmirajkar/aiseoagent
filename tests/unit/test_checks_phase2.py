@@ -84,26 +84,28 @@ def test_perf_no_key():
     assert "PAGESPEED_API_KEY" in r["perf.lcp"].reason
 
 
-def test_perf_field_data_preferred_and_inp(monkeypatch):
+def test_perf_field_and_lab_are_separate(monkeypatch):
     _stub(monkeypatch, {BASE + "/": lambda u, s: parse(u, s, PSI)})
     r = run(PERF, _perf_ctx([page("/")]))
+    field = r["perf.field_cwv"]
+    assert field.status == Status.FAIL and field.sources == [SOURCE_FIELD]  # field CLS 0.30 is poor
+    ev = field.items[0].evidence
+    assert ev["scope"] == "this page" and ev["LCP"].startswith("3.1 s") and ev["CLS"].startswith("0.30")
     lcp = r["perf.lcp"]
-    assert lcp.status == Status.WARNING and lcp.sources == [SOURCE_FIELD]  # 3.1 s field (lab 4.2 s ignored)
-    assert lcp.items[0].evidence["value"] == "3.1 s"
-    assert r["perf.inp"].status == Status.PASS
-    assert r["perf.cls"].status == Status.FAIL  # field CLS 0.30 > 0.25
+    assert lcp.status == Status.FAIL and lcp.sources == [SOURCE_LAB] and lcp.items[0].evidence["value"] == "4.2 s"
+    assert "perf.inp" not in r
     assert r["perf.tbt"].status == Status.WARNING and r["perf.tbt"].sources == [SOURCE_LAB]
     assert r["perf.score"].status == Status.WARNING
     opp = r["perf.opportunities"]
     assert opp.status == Status.WARNING and opp.items[0].generated_fix["note"]
 
 
-def test_perf_lab_only_inp_not_checked(monkeypatch):
+def test_perf_no_field_data(monkeypatch):
     lab_only = {**PSI, "loadingExperience": {}}
     _stub(monkeypatch, {BASE + "/": lambda u, s: parse(u, s, lab_only)})
     r = run(PERF, _perf_ctx([page("/")]))
     assert r["perf.lcp"].status == Status.FAIL and r["perf.lcp"].sources == [SOURCE_LAB]  # 4.2 s lab = poor
-    assert r["perf.inp"].status == Status.NOT_CHECKED and "CrUX" in r["perf.inp"].reason
+    assert r["perf.field_cwv"].status == Status.NOT_CHECKED and "real-visitor" in r["perf.field_cwv"].reason
 
 
 def test_perf_passing_checks_keep_measurements(monkeypatch):

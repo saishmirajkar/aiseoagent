@@ -16,9 +16,10 @@ from app.db.models import Audit, Finding, Image, Link, Page, PageText, Site, Sit
 from app.db.session import get_db
 from app.queue import jobs
 from app.reports.build import (
-    STATUS_ORDER, build_report_data, finding_dict, module_order, render_csv, render_html, render_json, top_fixes,
+    STATUS_ORDER, build_report_data, finding_dict, module_order, plain_summary, render_csv, render_html, render_json,
+    top_fixes,
 )
-from app.reports.plain import agent_summaries, counts_sentence, grade
+from app.reports.plain import agent_summaries
 from app.settings_store import load as load_settings
 from app.storage.blobs import blob_store
 
@@ -37,6 +38,7 @@ class AuditCreate(BaseModel):
     address: str | None = None
     phone: str | None = None
     brand: str | None = None
+    audience: str | None = Field(None, max_length=300)
 
     @field_validator("url")
     @classmethod
@@ -124,10 +126,11 @@ def get_audit(audit_id: int, db: Session = Depends(get_db)) -> dict:
         for f in findings:
             counts[f.status] = counts.get(f.status, 0) + 1
         facts = db.get(SiteFacts, audit_id)
-        out["plain"] = {"grade": grade((a.scores or {}).get("overall")), "counts_sentence": counts_sentence(counts),
-                        "pages_checked": ((facts.data if facts else {}).get("crawl") or {}).get("pages_fetched")}
+        dicts = [finding_dict(f) for f in findings]
+        out["plain"] = plain_summary(db, audit_id, (a.scores or {}).get("overall"), counts,
+                                     facts.data if facts else {}, dicts)
         out["agents"] = [{k: v for k, v in ag.items() if k != "findings"}
-                         for ag in agent_summaries([finding_dict(f) for f in findings], module_order())]
+                         for ag in agent_summaries(dicts, module_order())]
     return out
 
 

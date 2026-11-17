@@ -7,7 +7,8 @@ from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Level, Need, Status,
 )
 from app.modules.common import (
-    cached_link_sources, esc_attr, html_tag_fix, internal_targets, is_important, redirect_fix,
+    cached_link_sources, esc_attr, html_tag_fix, internal_targets, is_important, is_own_error_page, redirect_fix,
+    resource_kind,
 )
 
 H, M, L = Level.HIGH, Level.MED, Level.LOW
@@ -130,26 +131,42 @@ class TechnicalAudit(CheckModule):
         internal_known = len(pages) + sum(1 for u in site.url_status if u in internal)
         out: list[CheckResult] = []
 
+        blocked: list[FindingItem] = []  # 401/403/429: bot protection, not proof the URL is broken
+
         def status_items(pred) -> list[FindingItem]:
             items = []
-            for p in pages:
-                if p.status is not None and pred(p.status) and not p.redirect_chain:
-                    items.append(FindingItem(p.url, {"status": p.status, "linked_from": sources.get(p.url, [])[:5],
-                                                     "in_sitemap": p.in_sitemap}))
-            for u, s in site.url_status.items():
-                if u in internal and s.status is not None and pred(s.status) and not s.redirects:
-                    items.append(FindingItem(u, {"status": s.status, "linked_from": sources[u][:5],
-                                                 "crawled": False}))
+            rows = [(p.url, p.status, bool(p.redirect_chain), p.content_type, p.rechecked,
+                     {"in_sitemap": p.in_sitemap}) for p in pages]
+            rows += [(u, s.status, bool(s.redirects), s.content_type, s.rechecked, {"crawled": False})
+                     for u, s in site.url_status.items() if u in internal]
+            for url, status, redirected, ctype, rechecked, extra in rows:
+                if status is None or redirected or not pred(status):
+                    continue
+                if status == 404 and is_own_error_page(url):
+                    continue  # the site's own 'page not found' page; listing it in the sitemap is reported there
+                ev = {"status": status, "type": resource_kind(url, ctype), "linked_from": sources.get(url, [])[:5],
+                      **extra, "confirmed": "failed twice" if rechecked else "failed once"}
+                if status in UNVERIFIABLE:
+                    if not any(b.url == url for b in blocked):
+                        blocked.append(FindingItem(url, {**ev, "note": "Refused our checker (often bot protection); "
+                                                                      "open it in a browser to confirm"}))
+                    continue
+                items.append(FindingItem(url, ev))
             return items
 
         out.append(self.by_population("tech.status_4xx", status_items(lambda s: 400 <= s < 500),
                                       internal_known, summary="Internal URLs return client errors"))
         out.append(self.by_population("tech.status_5xx", status_items(lambda s: s >= 500),
                                       internal_known, summary="Internal URLs return server errors"))
-        errs = [FindingItem(p.url, {"error": p.error, "linked_from": sources.get(p.url, [])[:5]})
+        errs = [FindingItem(p.url, {"error": p.error, "linked_from": sources.get(p.url, [])[:5],
+                                    "confirmed": "failed twice" if p.rechecked else "failed once"})
                 for p in pages if p.status is None and p.error and not p.blocked_by_robots]
-        out.append(self.by_population("tech.fetch_errors", errs, len(pages), fail=False,
-                                      summary="Pages could not be fetched"))
+        r = self.by_population("tech.fetch_errors", errs + blocked, len(pages), fail=False,
+                               summary="Pages could not be fetched")
+        if blocked:
+            r.summary = (f"{len(errs)} page(s) failed to load; {len(blocked)} URL(s) refused our checker "
+                         "(HTTP 401/403/429, often bot protection, so not counted as broken)")
+        out.append(r)
 
         # broken links (grouped per source page)
         broken_by_page: dict[str, list[dict]] = defaultdict(list)

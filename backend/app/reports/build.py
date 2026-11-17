@@ -14,10 +14,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app import __version__
-from app.db.models import Audit, Finding, Metric, ModuleRun, Page, Site, SiteFacts
+from app.db.models import Audit, Finding, Link, Metric, ModuleRun, Page, Site, SiteFacts
 from app.modules.base import CATEGORY_LABELS
 from app.modules.registry import all_modules
-from app.reports.plain import agent_summaries, counts_sentence, grade, plain_fields
+from app.reports.plain import (
+    access_groups, agent_summaries, counts_sentence, coverage_sentence, grade, plain_fields,
+)
 
 TEMPLATES = Path(__file__).parent / "templates"
 STATUS_ORDER = {"FAIL": 0, "WARNING": 1, "NOT_CHECKED": 2, "PASS": 3, "N/A": 4}
@@ -75,6 +77,26 @@ def top_fixes(findings: list[Finding], n: int = 10) -> list[Finding]:
     return issues[:n]
 
 
+def is_one_page_site(db: Session, audit_id: int, facts: dict) -> bool:
+    """True when every internal link points back to the start page (e.g. #section links on a one-pager)."""
+    if (facts.get("crawl") or {}).get("pages_fetched") != 1:
+        return False
+    start = {facts.get("start_url"), (facts.get("start_url") or "").rstrip("/")}
+    targets = db.execute(select(Link.target_url).where(Link.audit_id == audit_id, Link.internal.is_(True))
+                         .distinct()).scalars().all()
+    return all(t in start or t.rstrip("/") in start for t in targets)
+
+
+def plain_summary(db: Session, audit_id: int, overall: float | None, counts: dict[str, int], facts: dict,
+                  findings: list[dict]) -> dict[str, Any]:
+    crawl = facts.get("crawl") or {}
+    return {"grade": grade(overall), "counts_sentence": counts_sentence(counts),
+            "pages_checked": crawl.get("pages_fetched"),
+            "coverage_sentence": coverage_sentence(crawl, facts.get("sitemap_found"), facts.get("sitemap_url_count"),
+                                                   is_one_page_site(db, audit_id, facts)),
+            "access": access_groups(findings)}
+
+
 def build_report_data(db: Session, audit_id: int) -> dict[str, Any]:
     audit = db.get(Audit, audit_id)
     if audit is None:
@@ -113,8 +135,7 @@ def build_report_data(db: Session, audit_id: int) -> dict[str, Any]:
         "coverage": audit.coverage, "status_counts": counts,
         "category_labels": CATEGORY_LABELS,
         "top_fixes": [finding_dict(x) for x in top_fixes(findings)],
-        "plain": {"grade": grade(overall), "counts_sentence": counts_sentence(counts),
-                  "pages_checked": (f.get("crawl") or {}).get("pages_fetched")},
+        "plain": plain_summary(db, audit_id, overall, counts, f, all_dicts),
         "agents": agent_summaries(all_dicts, module_order()),
         "missing": missing_summary(findings),
         "findings_by_category": by_cat,
@@ -176,7 +197,8 @@ def render_json(data: dict[str, Any]) -> str:
     return json.dumps(data, indent=2, ensure_ascii=False, default=str)
 
 
-CSV_COLUMNS = ["audit_id", "agent", "in_plain_words", "result", "what_to_do", "category", "module", "check_id", "title",
+CSV_COLUMNS = ["audit_id", "agent", "in_plain_words", "result", "what_to_do", "confidence", "category", "module",
+               "check_id", "title",
                "status", "impact", "effort", "priority",
                "url", "evidence", "generated_fix", "why", "fix", "reason", "sources"]
 
@@ -188,7 +210,8 @@ def render_csv(data: dict[str, Any]) -> str:
     aid = data["audit"]["id"]
     for cat, lst in data["findings_by_category"].items():
         for f in lst:
-            base = [aid, f["agent"], f["plain_title"], f["plain_status"], f["plain_do"], cat, f["module"],
+            conf = f"{f['confidence']['level']}: {f['confidence']['basis']}" if f.get("confidence") else ""
+            base = [aid, f["agent"], f["plain_title"], f["plain_status"], f["plain_do"], conf, cat, f["module"],
                     f["check_id"], f["title"], f["status"], f["impact"], f["effort"], f["priority"]]
             tail = [f["why"], f["fix"], f["reason"], "; ".join(f["sources"] or [])]
             items = f["items"] if f["status"] in ("FAIL", "WARNING") and f["items"] else [None]

@@ -125,6 +125,7 @@ class AuditInput:
     address: str | None = None
     phone: str | None = None
     brand: str | None = None
+    audience: str | None = None  # who the business serves, e.g. "karting track owners and amusement parks"
 
 
 @dataclass

@@ -115,6 +115,7 @@ def site_context(site: SiteModel, inputs) -> str:
     if home and home.title:
         bits.append(f"Homepage title: {home.title}")
     for label, v in (("Business type", inputs.business_type), ("Brand", inputs.brand),
+                     ("Target audience", getattr(inputs, "audience", None)),
                      ("Target country", inputs.country), ("Language", inputs.language or (home.lang if home else None)),
                      ("Owner's primary keywords", ", ".join(inputs.keywords) if inputs.keywords else None)):
         if v:

@@ -66,6 +66,7 @@ export interface Finding {
   plain_why?: string;
   plain_do?: string;
   plain_who?: string;
+  confidence?: { level: string; basis: string } | null;
 }
 
 export interface Agent {

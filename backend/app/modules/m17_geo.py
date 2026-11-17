@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import asyncio
 import re
+from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
 from app.llm.client import BOOL, LLMError, STR, arr, obj
@@ -26,6 +27,65 @@ STAT = re.compile(r"\b\d+(?:[.,]\d+)?\s?(%|percent|per cent|million|billion|km|k
 EEAT_PATHS = {"about": re.compile(r"/(about|about-us|who-we-are|company|our-story|team)(/|$)", re.I),
               "contact": re.compile(r"/(contact|contact-us|get-in-touch)(/|$)", re.I),
               "privacy": re.compile(r"/(privacy|privacy-policy|data-protection)(/|$)", re.I)}
+
+FOUNDED = re.compile(r"\b(?:since|founded(?:\s+in)?|established(?:\s+in)?|est\.|year of establishment"
+                     r"|in business since)\s*:?\s*((?:1[0-9]|20)\d{2})\b", re.I)
+EXP_BEFORE = re.compile(r"\b(\d{1,3})\s*\+?\s*(?:years?|yrs)\s+(?:of\s+)?(?:experience|expertise|in business)\b", re.I)
+# stat counters put the label first: "Years of experience 10 +"
+EXP_AFTER = re.compile(r"\byears?\s+of\s+(?:experience|expertise)\s*:?\s*(\d{1,3})\s*\+?", re.I)
+
+
+def extract_fact_claims(pages) -> dict[str, list[dict]]:
+    """Founding years and years-of-experience figures stated in page text, with a snippet of context."""
+    out: dict[str, list[dict]] = {"founded": [], "experience": []}
+    for p in pages:
+        text = p.text or ""
+        for m in FOUNDED.finditer(text):
+            out["founded"].append({"url": p.url, "value": int(m.group(1)), "text": _ctx(text, m)})
+        after = list(EXP_AFTER.finditer(text))
+        labels = [(m.start(), m.start(1)) for m in after]  # span of the "years of experience" words
+        # skip "8 + Years of experience 10" read as 8 years: those words already belong to a label-first match
+        before = [m for m in EXP_BEFORE.finditer(text) if not any(m.end(1) < b and a < m.end() for a, b in labels)]
+        for m in after + before:
+            n = int(m.group(1))
+            if 1 <= n <= 150:
+                out["experience"].append({"url": p.url, "value": n, "text": _ctx(text, m)})
+    return out
+
+
+def _ctx(text: str, m: re.Match) -> str:
+    return " ".join(text[max(0, m.start() - 40): m.end() + 30].split())
+
+
+def fact_problems(claims: dict[str, list[dict]], this_year: int) -> list[dict]:
+    problems: list[dict] = []
+    founded = claims["founded"]
+    plausible = [c for c in founded if 1800 <= c["value"] <= this_year]
+    for c in founded:
+        if c not in plausible:
+            problems.append({"url": c["url"], "problem": f"Implausible founding year {c['value']}",
+                             "found_text": c["text"],
+                             "note": "If this is an animated counter, the HTML holds the starting number."})
+    years = sorted({c["value"] for c in plausible})
+    if len(years) > 1:
+        first = next(c for c in plausible if c["value"] == years[0])
+        problems.append({"url": first["url"], "problem": f"Different founding years: {', '.join(map(str, years))}",
+                         "mentions": [f"{c['value']} on {c['url']}" for c in plausible][:8]})
+    if len(years) == 1:
+        expected = this_year - years[0]
+        for c in claims["experience"]:
+            if abs(c["value"] - expected) > 3 and c["value"] < expected:
+                problems.append({"url": c["url"], "problem": f"{c['value']} years of experience, but founded in "
+                                 f"{years[0]} (about {expected} years)", "found_text": c["text"]})
+    elif not years:
+        vals = sorted({c["value"] for c in claims["experience"]})
+        if len(vals) > 1 and vals[-1] - vals[0] > 3:
+            c = claims["experience"][0]
+            problems.append({"url": c["url"], "problem": f"Different years-of-experience figures: "
+                             f"{', '.join(map(str, vals))}",
+                             "mentions": [f"{x['value']} on {x['url']}" for x in claims["experience"]][:8]})
+    return problems
+
 
 SYSTEM = """You optimise web pages so AI assistants (ChatGPT, Claude, Perplexity, Google AI Overviews) can
 quote and cite them. For each page judge:
@@ -73,6 +133,11 @@ class GeoContent(CheckModule):
         CheckSpec("geo.eeat_site", "Site trust signals (about, contact, policies, profiles)", M, L,
                   "About/contact pages, policies and consistent profiles help search engines and AI trust the source.",
                   "Add the missing pages/signals listed in the evidence."),
+        CheckSpec("geo.fact_consistency", "Consistent business facts across pages", M, L,
+                  "Contradictory facts (founding year, years of experience) make visitors, search engines and AI "
+                  "assistants unsure which is true, and AI answers may repeat the wrong one.",
+                  "Use one founding year and one experience figure everywhere. If a number is an animated "
+                  "counter, put the final value in the HTML (crawlers read the starting value)."),
     )
 
     async def run(self, ctx: AuditContext) -> list[CheckResult]:
@@ -150,7 +215,22 @@ class GeoContent(CheckModule):
         out.append(self.by_population("geo.authorship", auth, len(arts), fail=False,
                                       summary="Articles missing author or date signals"))
         out.append(self._eeat(ctx))
+        out.append(self._facts(ctx))
         return out
+
+    def _facts(self, ctx: AuditContext) -> CheckResult:
+        claims = extract_fact_claims(ctx.site.html_pages())
+        if not claims["founded"] and not claims["experience"]:
+            return self.not_applicable("geo.fact_consistency", "No founding year or years-of-experience claims found")
+        problems = fact_problems(claims, datetime.now(timezone.utc).year)
+        items = [FindingItem(pr["url"], {k: v for k, v in pr.items() if k != "url"}) for pr in problems]
+        if not items:
+            return self.result("geo.fact_consistency", Status.PASS,
+                               f"Founding year and experience claims agree ({len(claims['founded'])} founding-year, "
+                               f"{len(claims['experience'])} experience mention(s))")
+        return CheckResult(spec=self.spec("geo.fact_consistency"), status=Status.WARNING,
+                           summary=f"{len(items)} contradictory or implausible fact(s) across the site", items=items,
+                           affected=len(items), sources=["Page text (as crawlers read it)"])
 
     def _eeat(self, ctx: AuditContext) -> CheckResult:
         site = ctx.site
