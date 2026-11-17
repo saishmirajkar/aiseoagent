@@ -88,7 +88,8 @@ class LinkBuilding(CheckModule):
         topic = (ctx.inputs.business_type or (ctx.inputs.keywords[0] if ctx.inputs.keywords else None) or home_kw
                  or (clusters.most_common(1)[0][0] if clusters else None)
                  or brand_of(ctx) or site_domain.split(".")[0])
-        topic_words = kw_tokens(topic) | {w for r in list(kmap.values())[:10] for w in kw_tokens(r.get("primary_keyword", ""))}
+        topic_words = kw_tokens(topic) | {w for _, r in sorted(kmap.items())[:10]  # sorted: stable across runs
+                                          for w in kw_tokens(r.get("primary_keyword", ""))}
         cands: dict[str, dict] = {}
 
         def add(url: str, title: str, snippet: str, kind: str) -> None:
