@@ -168,6 +168,9 @@ class TechnicalAudit(CheckModule):
         errs = [FindingItem(p.url, {"error": p.error, "linked_from": sources.get(p.url, [])[:5],
                                     "confirmed": "failed twice" if p.rechecked else "failed once"})
                 for p in pages if p.status is None and p.error and not p.blocked_by_robots]
+        blocked += [FindingItem(p.url, {"status": p.status, "type": "page", "note": p.error,
+                                        "linked_from": sources.get(p.url, [])[:5]})
+                    for p in pages if p.status is not None and p.error and p.error.startswith("Bot-protection")]
         r = self.by_population("tech.fetch_errors", errs + blocked, len(pages), fail=False,
                                summary="Pages could not be fetched")
         if blocked:

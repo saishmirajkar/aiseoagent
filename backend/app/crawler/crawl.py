@@ -8,8 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import itertools
-import secrets
 import logging
+import re
+import secrets
 import time
 from collections import Counter
 from collections.abc import Awaitable, Callable
@@ -39,6 +40,12 @@ SITEMAP_PRIORITY = 1000
 _PARSE_FIELDS = {f.name for f in fields(PageData)} - {
     "url", "final_url", "status", "redirect_chain", "redirect_loop", "response_ms", "content_type",
     "is_html", "error", "depth", "discovered_via", "blocked_by_robots"}
+
+
+BOT_CHALLENGE = "Bot-protection challenge page instead of content (e.g. Cloudflare 'Just a moment...')"
+CHALLENGE = re.compile(r"<title>\s*(just a moment\.\.\.|attention required! \| cloudflare|access denied|"
+                       r"pardon our interruption|please verify you are a human)\s*</title>|/cdn-cgi/challenge-platform/|"
+                       r"_Incapsula_Resource|px-captcha|cf-chl-", re.I)
 
 
 class CrawlError(Exception):
@@ -300,6 +307,10 @@ class Crawler:
         if not (target.is_html and target.status == 200 and res.body):
             return
         html = res.text()
+        if CHALLENGE.search(html[:20000]):
+            # a bot-check interstitial (Cloudflare "Just a moment...", etc.) is not the page's content
+            target.error = BOT_CHALLENGE
+            return
         signals = parse_page(target, html, self.scope)
         is_home = via == "start"
         want_render = self._should_render(signals.looks_like_shell, is_home)
@@ -409,7 +420,8 @@ class Crawler:
         404s are requested again after a pause; a URL that recovers is treated as working (pages are
         re-parsed), one that fails again is marked ``rechecked`` so reports can say it was confirmed."""
         def bad(status: int | None, error: str | None) -> bool:
-            return (status is None and bool(error)) or (status is not None and status >= 400)
+            return ((status is None and bool(error)) or (status is not None and status >= 400)
+                    or error == BOT_CHALLENGE)
 
         pages = [u for u, p in self.pages.items() if self.scope.is_internal(u) and not p.blocked_by_robots
                  and not p.redirect_chain and bad(p.status, p.error)]

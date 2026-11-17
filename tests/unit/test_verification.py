@@ -135,3 +135,14 @@ def test_placeholder_filenames_and_readability_guards():
     assert non_descriptive_filename("IMG_3757-1024x768.jpeg")
     menu = " ".join(["Shop Men Shop Women New Arrivals Bestsellers Sale"] * 40)  # no sentences: not scored
     assert flesch(menu) is None
+
+
+def test_bot_challenge_page_is_not_content():
+    from app.crawler.crawl import CHALLENGE
+    assert CHALLENGE.search("<html><head><title>Just a moment...</title></head>")
+    assert CHALLENGE.search('<script src="/cdn-cgi/challenge-platform/h/b/orchestrate/x"></script>')
+    assert not CHALLENGE.search("<title>Just a moment with our founder</title>")
+    s = site([page("/", links=[link("/survey")]), page("/survey", error="Bot-protection challenge page instead of content")])
+    r = run(TechnicalAudit(), ctx(s))
+    assert BASE + "/survey" in [i.url for i in r["tech.fetch_errors"].items]
+    assert BASE + "/survey" not in {p.url for p in s.html_pages()}
