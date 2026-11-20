@@ -59,7 +59,18 @@ async def _cc_ranks_handler(payload: dict) -> None:
     log.info("Authority table refresh finished: %s", await asyncio.to_thread(_run))
 
 
-HANDLERS: dict[str, Handler] = {"audit": _audit_handler, "cc_ranks": _cc_ranks_handler}
+async def _fix_prepare_handler(payload: dict) -> None:
+    from app.fixer.service import prepare_run
+    await prepare_run(int(payload["run_id"]))
+
+
+async def _fix_publish_handler(payload: dict) -> None:
+    from app.fixer.service import publish_run
+    await publish_run(int(payload["run_id"]))
+
+
+HANDLERS: dict[str, Handler] = {"audit": _audit_handler, "cc_ranks": _cc_ranks_handler,
+                                "fix_prepare": _fix_prepare_handler, "fix_publish": _fix_publish_handler}
 
 
 def enqueue_cc_ranks(force: bool = False) -> int | None:

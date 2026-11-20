@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Agent, api, Finding, fixCode, fmtEvidence, post } from "../api";
+import FixPanel from "./FixPanel";
 
 const RUNNING = ["queued", "running", "cancel_requested"];
 
 export default function AuditView({ id }: { id: number }) {
   const [a, setA] = useState<any>(null);
   const [err, setErr] = useState("");
-  const [tab, setTab] = useState<"summary" | "agents" | "pages">("summary");
+  const [tab, setTab] = useState<"summary" | "agents" | "pages" | "fix">("summary");
   const [agent, setAgent] = useState("");
 
   useEffect(() => {
@@ -53,7 +54,7 @@ export default function AuditView({ id }: { id: number }) {
       {a.status === "completed" && (
         <>
           <div className="tabs">
-            {([["summary", "Summary"], ["agents", "What each agent found"], ["pages", "Pages"]] as const).map(([t, label]) => (
+            {([["summary", "Summary"], ["agents", "What each agent found"], ["pages", "Pages"], ["fix", "✨ Fix with AI"]] as const).map(([t, label]) => (
               <button key={t} className={tab === t ? "active" : ""} onClick={() => { setTab(t); setAgent(""); }}>
                 {label}
               </button>
@@ -62,6 +63,7 @@ export default function AuditView({ id }: { id: number }) {
           {tab === "summary" && <Overview a={a} onAgent={(k) => { setAgent(k); setTab("agents"); }} />}
           {tab === "agents" && <Findings auditId={id} agents={a.agents || []} agent={agent} setAgent={setAgent} />}
           {tab === "pages" && <Pages auditId={id} />}
+          {tab === "fix" && <FixPanel auditId={id} />}
         </>
       )}
     </>

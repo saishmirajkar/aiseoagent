@@ -206,6 +206,54 @@ visibility test needs live web search and is NOT_CHECKED in this mode. Findings 
 5. Re-run after new Common Crawl releases; the app keeps the two latest imports per domain and
    reports new/lost referring domains between them.
 
+## Fix with AI (GitHub pull requests)
+
+After an audit, the **✨ Fix with AI** tab turns the report into a pull request on the website's GitHub
+repository. It never writes to the default branch, never merges and never deploys: a person reviews and
+merges the pull request, then re-runs the audit to confirm.
+
+1. **Connect the repository** (once per site): repository link plus a *fine-grained personal access token*
+   limited to that one repository with **Contents: Read and write** and **Pull requests: Read and write**.
+   The token is checked against GitHub and stored encrypted (Fernet, key derived from `SESSION_SECRET`;
+   changing `SESSION_SECRET` means reconnecting). It is never returned by the API.
+2. **Choose fixes.** Each finding becomes a fix tagged:
+   * *Automatic* – titles, meta descriptions, canonical, Open Graph tags, `lang`, viewport, JSON-LD labels,
+     image alt text and width/height, sitemap.xml, robots.txt `Sitemap:` line.
+   * *You'll review the writing* – answer-first openings, FAQ sections (+ FAQPage JSON-LD), main headings,
+     internal links, llms.txt.
+   * *Needs your answer* – facts only the owner knows (new sections, contradictory facts, placeholder
+     text, required schema fields). Skipped until answered; never invented.
+   * *Developer instructions* – redirects, server settings, image compression, speed work: listed in the
+     pull request, not changed.
+3. **Prepare** (background job `fix_prepare`): reads the repository through the GitHub API (no clone),
+   detects the framework (plain HTML, Next.js, Astro, Gatsby, Nuxt, SvelteKit, Vite, Eleventy, Hugo,
+   Jekyll, Shopify theme), finds the file behind each page (by path, then by the page's exact title /
+   description / H1; files matching many pages are treated as shared templates and not edited per page),
+   applies edits, and validates every changed file (tag balance, bracket balance for JS/TSX, JSON-LD
+   parse + schema rules, XML). A file that fails is dropped with the reason. The dashboard shows each
+   result and a diff per file.
+4. **Publish** (job `fix_publish`): one commit per agent on a new branch
+   `seo-inspector/audit-<id>-fix-<run>`, and a pull request whose description lists every change, the text
+   written for review, what was skipped and why, and the developer to-do list.
+
+Edits are made in code where the tag appears literally (HTML, Liquid, Astro, Nunjucks…). JSX/Vue/Svelte,
+Markdown front matter and placement inside page content go to an **AI editor** that returns exact
+search/replace pairs (each must match exactly once; large files get an excerpt around the target).
+
+**Writing quality.** Google does not penalise text for being AI-written; it penalises unhelpful,
+generic, mass-produced text, and "AI detectors" are unreliable. The writer (`backend/app/fixer/writing.py`)
+therefore aims for specific, plain writing in the site's own voice: a voice profile measured from the
+site's pages (person, contractions, British/American spelling, sentence length, two example sentences),
+facts only from the page and the owner's answers, a banned list of filler/"AI-sounding" phrases, a second
+editor pass that rewrites generic lines and removes unsupported claims, and automatic checks (banned
+phrases, flat sentence rhythm, em-dash and adverb overuse) whose warnings appear in the pull request.
+
+Limits: only code-based sites in GitHub can be edited. Shopify page text and SEO fields set in the admin,
+WordPress content and Framer/Wix sites are not in a repository (a Shopify theme repository only holds
+templates). The AI parts need the AI provider (or manual mode); mechanical fixes work without it.
+For development and tests, `FIXER_ALLOW_LOCAL=1` allows `local:/path/to/checkout` instead of GitHub
+(publishing then creates a local branch).
+
 ## Local development
 
 Requirements: Python 3.11+, Node 20+, PostgreSQL 14+, and Chromium for Playwright.

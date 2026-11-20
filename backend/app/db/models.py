@@ -308,3 +308,33 @@ class OutreachProspect(Base):
                                                  onupdate=func.now(), nullable=False)
 
     __table_args__ = (UniqueConstraint("site_domain", "url", name="uq_outreach_site_url"),)
+
+
+class RepoConnection(Base):
+    """GitHub repository linked to a site for 'Fix with AI'. The access token is stored encrypted."""
+    __tablename__ = "repo_connections"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    site_id: Mapped[int] = mapped_column(ForeignKey("sites.id", ondelete="CASCADE"), unique=True, nullable=False)
+    repo: Mapped[str] = mapped_column(String(255), nullable=False)  # owner/name (or local:/path in dev)
+    token_enc: Mapped[str | None] = mapped_column(Text)
+    default_branch: Mapped[str | None] = mapped_column(String(255))
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
+                                                 onupdate=func.now(), nullable=False)
+
+
+class FixRun(Base):
+    """One 'Fix with AI' attempt for an audit: chosen fixes, answers, prepared changes and the pull request."""
+    __tablename__ = "fix_runs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    audit_id: Mapped[int] = mapped_column(ForeignKey("audits.id", ondelete="CASCADE"), index=True, nullable=False)
+    # queued | preparing | ready | publishing | published | failed
+    status: Mapped[str] = mapped_column(String(16), default="queued", nullable=False)
+    selection: Mapped[list] = mapped_column(JSONB, default=list, nullable=False)
+    answers: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    result: Mapped[dict] = mapped_column(JSONB, default=dict, nullable=False)
+    pr_url: Mapped[str | None] = mapped_column(Text)
+    error: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = _now()
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(),
+                                                 onupdate=func.now(), nullable=False)
