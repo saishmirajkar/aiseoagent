@@ -114,7 +114,7 @@ def test_url_variants():
 
 def test_viewport_lang_slow_meta_refresh():
     s = site([home(links=[link("/a"), link("/b")]), page("/a", viewport=None, lang=None, response_ms=2500),
-              page("/b", viewport="initial-scale=1", meta_refresh="0;url=/x")])
+              page("/b", viewport="width=1024", meta_refresh="0;url=/x")])
     r = run(M, ctx(s))
     assert urls(r["tech.viewport"]) == {BASE + "/a", BASE + "/b"}
     assert urls(r["tech.lang"]) == {BASE + "/a"}

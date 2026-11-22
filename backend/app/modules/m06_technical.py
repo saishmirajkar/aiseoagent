@@ -37,6 +37,15 @@ def _broken(status: int | None, error: str | None) -> bool:
     return bool(error) and ("ConnectError" in error or "Name or service" in error or "nodename" in error)
 
 
+
+def _responsive_viewport(content: str) -> bool:
+    """width=device-width, or initial-scale with no fixed width (browsers and Lighthouse treat that as responsive)."""
+    v = content.replace(" ", "").lower()
+    if "width=device-width" in v:
+        return True
+    fixed_width = any(part.startswith("width=") for part in v.split(","))
+    return "initial-scale=" in v and not fixed_width
+
 class TechnicalAudit(CheckModule):
     key = "technical"
     number = 6
@@ -318,7 +327,7 @@ class TechnicalAudit(CheckModule):
         for p in ok:
             if not p.viewport:
                 vp.append(FindingItem(p.url, {"viewport": "(missing)"}, generated_fix=html_tag_fix(vp_tag)))
-            elif "width=device-width" not in p.viewport.replace(" ", "").lower():
+            elif not _responsive_viewport(p.viewport):
                 vp.append(FindingItem(p.url, {"viewport": p.viewport, "problem": "no width=device-width"},
                                       generated_fix=html_tag_fix(vp_tag)))
         out.append(self.by_population("tech.viewport", vp, len(ok), summary="Pages lack a responsive viewport"))

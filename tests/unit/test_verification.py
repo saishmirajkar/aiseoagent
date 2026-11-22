@@ -194,3 +194,11 @@ def test_http_page_that_only_fails_over_http_is_not_broken():
              url_status={"http://ex.com/canvas": c.url_status["http://ex.com/canvas"]})
     r = run(TechnicalAudit(), ctx(s))
     assert r["tech.broken_internal_links"].status.value == "PASS"
+
+
+def test_viewport_initial_scale_only_is_responsive():
+    from app.modules.m06_technical import _responsive_viewport
+    assert _responsive_viewport("initial-scale=1")
+    assert _responsive_viewport("width=device-width, initial-scale=1")
+    assert not _responsive_viewport("width=1024, initial-scale=1")
+    assert not _responsive_viewport("user-scalable=no")

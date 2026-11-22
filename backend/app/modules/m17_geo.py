@@ -25,7 +25,7 @@ QUESTION = re.compile(r"\?\s*$|^(what|how|why|when|where|which|who|can|does|do|i
 FAQ_HEADING = re.compile(r"\b(faq|faqs|frequently asked|common questions|questions)\b", re.I)
 STAT = re.compile(r"\b\d+(?:[.,]\d+)?\s?(%|percent|per cent|million|billion|km|kg|hp|cc|mph|km/h|years?)\b", re.I)
 EEAT_PATHS = {"about": re.compile(r"/(about|about-us|who-we-are|company|our-story|team)(/|$)", re.I),
-              "contact": re.compile(r"/(contact|contact-us|get-in-touch)(/|$)", re.I),
+              "contact": re.compile(r"/(contact|contacts|contact-us|contact_us|contactus|get-in-touch)(/|$)", re.I),
               "privacy": re.compile(r"/(privacy|privacy-policy|data-protection)(/|$)", re.I)}
 
 FOUNDED = re.compile(r"\b(?:since|founded(?:\s+in)?|established(?:\s+in)?|est\.|year of establishment"
