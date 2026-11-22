@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 
+from app.crawler.urls import is_scoped_product_url
 from app.crawler.simhash import hamming
 from app.crawler.urls import template_key
 from app.sitemodel.types import SiteModel
@@ -22,6 +23,18 @@ def _resolve(model: SiteModel, url: str) -> str:
     return url
 
 
+def _canonical_of(model: SiteModel, url: str) -> str:
+    """A link to a page that canonicalises elsewhere (Shopify's /collections/x/products/y → /products/y)
+    also counts for the canonical page, the way search engines consolidate it."""
+    p = model.pages.get(url)
+    if p is not None and p.is_ok and p.canonical_target and p.canonical_target != url:
+        if is_scoped_product_url(url) or p.canonical_target in model.pages:
+            return p.canonical_target
+    if is_scoped_product_url(url):
+        return url.split("/collections/", 1)[0] + "/products/" + url.rsplit("/products/", 1)[1]
+    return url
+
+
 def build_model(model: SiteModel) -> SiteModel:
     pages = model.pages
 
@@ -34,7 +47,7 @@ def build_model(model: SiteModel) -> SiteModel:
         for l in p.links:
             if not l.internal:
                 continue
-            for t in {l.target, _resolve(model, l.target)}:
+            for t in {l.target, _resolve(model, l.target), _canonical_of(model, l.target)}:
                 if t != p.url:
                     sources[t].add(p.url)
                     graph[p.url].add(t)

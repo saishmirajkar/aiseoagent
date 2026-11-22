@@ -335,3 +335,14 @@ def test_scoped_product_urls_are_crawled_after_sitemap_pages():
     c.cfg.max_pages, c.fetched, c.order, c.seen, c._deferred = 10, 0, [], {B + "/"}, []
     asyncio.run(go())
     assert c.order[4:] == [B + "/collections/a/products/x", B + "/collections/a/products/y"]
+
+
+def test_scoped_product_links_count_for_the_product_page():
+    from app.modules.m04_internal_links import InternalLinking
+    s = site([page("/", links=[link("/collections/mens/products/westsider")]),
+              page("/collections/mens/products/westsider", canonical=BASE + "/products/westsider"),
+              page("/products/westsider")],
+             sitemap={BASE + "/products/westsider": None})
+    assert s.pages[BASE + "/products/westsider"].inlinks >= 1
+    r = run(InternalLinking(), ctx(s))
+    assert r["links.orphans"].status.value == "PASS"

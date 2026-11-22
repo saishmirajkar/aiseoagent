@@ -6,6 +6,7 @@ from collections import defaultdict
 from urllib.parse import urlsplit
 
 from app.crawler.urls import is_action_url, is_pagination
+from app.sitemodel.builder import _canonical_of
 from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Level, Need, Status,
 )
@@ -111,6 +112,7 @@ class InternalLinking(CheckModule):
             for l in p.links:
                 if l.internal and l.target != p.url:
                     linked.add(l.target)
+                    linked.add(_canonical_of(site, l.target))  # /collections/x/products/y counts for /products/y
         sm = site.sitemap_urls
         orphans = []
         non_html = 0
