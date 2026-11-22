@@ -249,3 +249,17 @@ def test_domain_like_link_is_a_page_not_a_file():
     from app.modules.common import resource_kind
     assert resource_kind("https://s.com/blogs/posts/comunitymade.com") == "page"
     assert resource_kind("https://s.com/file.pdf") == "PDF file"
+
+
+def test_shopify_section_group_chrome_is_not_content():
+    from app.crawler.parser import parse_page
+    from app.crawler.urls import SiteScope
+    from app.sitemodel.types import PageData
+    menu = " ".join(["SHOP MEN Low Tops Mid Tops Slip-Ons"] * 20)
+    html = (f'<html><body><div id="shopify-section-sections--1__announcement-bar">FREE USA SHIPPING ON $100+</div>'
+            f'<div id="shopify-section-sections--1__header">{menu}</div>'
+            '<div id="shopify-section-template--9__main"><h1>Westsider</h1><p>Handmade in Los Angeles from Italian leather.</p></div>'
+            '<div id="shopify-section-sections--2__footer-main">Newsletter signup and links</div></body></html>')
+    p = PageData(url="https://s.com/products/w", final_url="https://s.com/products/w")
+    parse_page(p, html, SiteScope("s.com"))
+    assert "Italian leather" in p.text and "SHOP MEN" not in p.text and "Newsletter" not in p.text

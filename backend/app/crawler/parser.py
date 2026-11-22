@@ -19,7 +19,11 @@ log = logging.getLogger(__name__)
 STRIP_FOR_TEXT = ["script", "style", "noscript", "template", "svg", "iframe", "object", "canvas"]
 # site chrome that is not the page's own content (menus, drawers, pop-ups, hidden copies)
 CHROME = 'nav, [role="navigation"], dialog, [role="dialog"], [aria-hidden="true"], [hidden]'
-PAGE_FRAME = 'header, footer, aside, [role="banner"], [role="contentinfo"], [role="complementary"]'
+PAGE_FRAME = ('header, footer, aside, [role="banner"], [role="contentinfo"], [role="complementary"], '
+              # Shopify section groups (header, announcement bar, footer) wrap the site chrome; the page's own
+              # sections use "template--" ids. Older themes use fixed ids.
+              '[id^="shopify-section-sections--"], #shopify-section-header, #shopify-section-footer, '
+              '#shopify-section-announcement-bar')
 MOUNT_IDS = ("root", "app", "__next", "__nuxt", "___gatsby", "svelte", "main-app")
 _WS = re.compile(r"\s+")
 _PHONE = re.compile(r"(?<![\w/])(\+?\(?\d[\d\s().\-]{7,18}\d)(?![\w/])")
