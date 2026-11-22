@@ -128,6 +128,21 @@ def is_action_url(url: str) -> bool:
     return bool(keys & ACTION_QUERY_KEYS) or bool(ACTION_PATH.search(parts.path or ""))
 
 
+FACET_KEYS = {"sort_by", "sort", "orderby", "order", "view", "grid", "filter", "q", "_pos", "_sid", "_ss"}
+SCOPED_PRODUCT = re.compile(r"^/collections/[^/]+/products/[^/]+/?$", re.I)
+
+
+def is_facet_url(url: str) -> bool:
+    """Sort/filter/search-tracking variants of a listing (?sort_by=, ?filter.v.price=, ?_pos=…)."""
+    keys = {k.lower() for k in parse_qs(urlsplit(url).query, keep_blank_values=True)}
+    return bool(keys) and all(k in FACET_KEYS or k.startswith("filter.") or k.startswith("filter_") for k in keys)
+
+
+def is_scoped_product_url(url: str) -> bool:
+    """Shopify's /collections/<c>/products/<p>: the same page as /products/<p> (canonicalised there)."""
+    return bool(SCOPED_PRODUCT.match(urlsplit(url).path or ""))
+
+
 PAGINATION = re.compile(r"/page/\d+/?$|/p/\d+/?$", re.I)
 
 

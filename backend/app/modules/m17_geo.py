@@ -219,7 +219,10 @@ class GeoContent(CheckModule):
         return out
 
     def _facts(self, ctx: AuditContext) -> CheckResult:
-        claims = extract_fact_claims(ctx.site.html_pages())
+        # the business's own claims: blog articles often quote other companies' founding years
+        own = [p for p in ctx.site.html_pages()
+               if not (ARTICLE_PATH.search(urlsplit(p.url).path) or p.og.get("type") == "article")]
+        claims = extract_fact_claims(own)
         if not claims["founded"] and not claims["experience"]:
             return self.not_applicable("geo.fact_consistency", "No founding year or years-of-experience claims found")
         problems = fact_problems(claims, datetime.now(timezone.utc).year)

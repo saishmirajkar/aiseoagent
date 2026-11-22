@@ -26,7 +26,7 @@ from app.crawler.renderer import Renderer
 from app.crawler.robots import AI_BOTS, RobotsInfo, build_robots
 from app.crawler.sitemap import collect_sitemaps
 from app.crawler.urls import (
-    SiteScope, ensure_scheme, host_of, is_action_url, looks_like_page, normalize_url, origin_of, toggle_www,
+    SiteScope, ensure_scheme, host_of, is_action_url, is_scoped_product_url, looks_like_page, normalize_url, origin_of, toggle_www,
 )
 from app.sitemodel.builder import build_model
 from app.sitemodel.types import ImageAsset, PageData, SiteFacts, SiteModel, UrlStatus
@@ -37,6 +37,7 @@ ProgressCb = Callable[[dict], Awaitable[None]]
 CancelCb = Callable[[], Awaitable[bool]]
 
 SITEMAP_PRIORITY = 1000
+SCOPED_PRIORITY = 5000
 _PARSE_FIELDS = {f.name for f in fields(PageData)} - {
     "url", "final_url", "status", "redirect_chain", "redirect_loop", "response_ms", "content_type",
     "is_html", "error", "depth", "discovered_via", "blocked_by_robots"}
@@ -345,7 +346,9 @@ class Crawler:
                 self.url_status[t] = UrlStatus(url=t, status=None, blocked_by_robots=True)
                 continue
             child_depth = depth + 1 if depth is not None else None
-            queue.put_nowait((prio + 1, next(self._seq), t, child_depth, "link"))
+            # duplicate product addresses (/collections/x/products/y) only after every other page, sitemap included
+            child_prio = SCOPED_PRIORITY if is_scoped_product_url(t) else prio + 1
+            queue.put_nowait((child_prio, next(self._seq), t, child_depth, "link"))
 
     def _should_render(self, looks_like_shell: bool, is_home: bool) -> bool:
         mode = self.cfg.render_mode

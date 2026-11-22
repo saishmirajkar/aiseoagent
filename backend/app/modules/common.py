@@ -88,6 +88,8 @@ def resource_kind(url: str, content_type: str | None = None) -> str:
     from app.crawler.urls import NON_PAGE_EXTENSIONS, path_extension
     ct = (content_type or "").lower()
     ext = path_extension(url)
+    if ext in {"com", "net", "org", "io", "co", "us", "biz", "info"}:
+        ext = ""  # a mistyped link like href="example.com" becomes /path/example.com: still a page address
     if "html" in ct or (not ct and ext not in NON_PAGE_EXTENSIONS):
         return "page"
     if ct.startswith("image/") or ext in {"jpg", "jpeg", "png", "gif", "webp", "avif", "svg", "ico", "bmp"}:

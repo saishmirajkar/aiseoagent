@@ -6,6 +6,7 @@ import re
 from collections import Counter
 from xml.sax.saxutils import escape
 
+from app.crawler.urls import is_facet_url
 from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Integration, Level, Need,
     Status,
@@ -117,6 +118,8 @@ class CrawlingIndexing(CheckModule):
             for u in sorted(candidates):
                 if robots.can_fetch(u, "Googlebot") or is_utility(u):
                     continue
+                if is_facet_url(u) and u not in site.sitemap_urls:
+                    continue  # sort/filter variants are meant to be blocked (Shopify and WooCommerce defaults)
                 n_links = len(sources.get(u, []))
                 important = u == f.start_url or u in site.sitemap_urls or n_links >= ctx.settings.thresholds.important_page_min_inlinks
                 if important:

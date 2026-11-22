@@ -233,3 +233,19 @@ def test_repeated_card_text_does_not_make_listings_near_duplicates():
     from app.sitemodel import builder
     assert hamming(simhash(a), simhash(b)) > builder.NEAR_DUPLICATE_HAMMING
     assert simhash("same text here twice") == simhash("same text here twice")
+
+
+def test_facet_and_scoped_product_urls():
+    from app.crawler.urls import is_facet_url, is_scoped_product_url
+    assert is_facet_url("https://s.com/collections/mens?sort_by=manual")
+    assert is_facet_url("https://s.com/collections/mens?filter.v.price.gte=10&sort_by=price")
+    assert not is_facet_url("https://s.com/collections/mens?page=2")
+    assert not is_facet_url("https://s.com/collections/mens")
+    assert is_scoped_product_url("https://s.com/collections/mens/products/westsider")
+    assert not is_scoped_product_url("https://s.com/products/westsider")
+
+
+def test_domain_like_link_is_a_page_not_a_file():
+    from app.modules.common import resource_kind
+    assert resource_kind("https://s.com/blogs/posts/comunitymade.com") == "page"
+    assert resource_kind("https://s.com/file.pdf") == "PDF file"
