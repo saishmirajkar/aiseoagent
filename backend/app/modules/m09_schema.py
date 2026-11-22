@@ -32,6 +32,13 @@ _SECTION = {"blog", "blogs", "news", "article", "articles", "post", "posts", "in
             "resources", "guide", "guides", "learn"}
 
 
+def is_article(page) -> bool:
+    """A dated post or a page under a blog/news section. og:type=article alone is not enough: Yoast and
+    other plugins set it on every WordPress page (About, Contact…), which carry only a modified date."""
+    dated = "datePublished" in page.dates or "published_time" in page.dates
+    return dated or _article_path(urlsplit(page.url).path)
+
+
 def _article_path(path: str) -> bool:
     """/blog/my-post or /blogs/news/my-post, but not the listing itself (/blogs/news) or its page 2."""
     segs = [s for s in path.strip("/").split("/") if s]
@@ -143,8 +150,8 @@ def detect_types(page: PageData, site: SiteModel, local: bool) -> list[tuple[str
     if og_type == "product" or PRODUCT_PATH.search(path) or (cart and not listing):
         out.append(("Product", "og:type product" if og_type == "product" else "product URL"
                     if PRODUCT_PATH.search(path) else "price and add-to-cart on the page"))
-    elif og_type == "article" or "datePublished" in page.dates or "published_time" in page.dates or (
-            _article_path(path) and page.word_count >= 300):
+    elif "datePublished" in page.dates or "published_time" in page.dates or (
+            _article_path(path) and (page.word_count >= 300 or og_type == "article")):
         out.append(("Article", "article signals (og:type/dates/URL)"))
     if page.embeds:
         out.append(("VideoObject", f"{len(page.embeds)} video embed(s)"))

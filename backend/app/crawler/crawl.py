@@ -390,7 +390,9 @@ class Crawler:
                 if r.status is None and u.startswith("http://"):
                     # plain-http link that failed to connect: if the https version answers, the target exists
                     r2 = await self.fetcher.check("https://" + u[len("http://"):])
-                    if r2.status is not None:
+                    if r2.status is not None or "ProxyError" in (r2.error or ""):
+                        # an answer, or our own network refused the https check: either way the http failure
+                        # says nothing about the site (a proxy refusal leaves the link "could not verify")
                         r = r2
                 self.url_status[u] = UrlStatus(url=u, status=r.status, final_url=r.final_url,
                                                redirects=len(r.chain), error=r.error,

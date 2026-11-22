@@ -87,16 +87,17 @@ def _in_svg(node: LexborNode) -> bool:
     return False
 
 
-def _jsonld_walk(obj, out: list[dict]) -> None:
+def _jsonld_walk(obj, out: list[dict], context=None) -> None:
     if isinstance(obj, list):
         for x in obj:
-            _jsonld_walk(x, out)
+            _jsonld_walk(x, out, context)
     elif isinstance(obj, dict):
+        ctx = obj.get("@context", context)
         if "@graph" in obj and isinstance(obj["@graph"], list):
-            for x in obj["@graph"]:
-                _jsonld_walk(x, out)
+            for x in obj["@graph"]:  # items in a @graph inherit its @context (Yoast, Rank Math)
+                _jsonld_walk(x, out, ctx)
         else:
-            out.append(obj)
+            out.append(obj if "@context" in obj or ctx is None else {"@context": ctx, **obj})
 
 
 def _types(item: dict) -> list[str]:

@@ -263,3 +263,29 @@ def test_shopify_section_group_chrome_is_not_content():
     p = PageData(url="https://s.com/products/w", final_url="https://s.com/products/w")
     parse_page(p, html, SiteScope("s.com"))
     assert "Italian leather" in p.text and "SHOP MEN" not in p.text and "Newsletter" not in p.text
+
+
+def test_jsonld_graph_items_inherit_context():
+    from app.crawler.parser import _jsonld_walk
+    out = []
+    _jsonld_walk({"@context": "https://schema.org", "@graph": [{"@type": "WebPage", "name": "x"},
+                                                              {"@type": "Organization", "name": "y"}]}, out)
+    assert all(i["@context"] == "https://schema.org" for i in out) and len(out) == 2
+
+
+def test_cloudflare_email_protection_is_not_a_page():
+    from app.crawler.urls import is_action_url
+    assert is_action_url("https://x.com/cdn-cgi/l/email-protection")
+    assert not is_action_url("https://x.com/about/cdn-cgi-guide")
+
+
+def test_wordpress_pages_with_og_article_are_not_articles():
+    from app.modules.m09_schema import is_article
+    from app.sitemodel.types import PageData
+    about = PageData(url="https://x.com/about/", final_url="https://x.com/about/")
+    about.og = {"type": "article"}
+    about.dates = {"modified_time": "2026-10-22"}
+    post = PageData(url="https://x.com/lawsuit-update/", final_url="https://x.com/lawsuit-update/")
+    post.og = {"type": "article"}
+    post.dates = {"published_time": "2026-10-20", "modified_time": "2026-10-20"}
+    assert not is_article(about) and is_article(post)

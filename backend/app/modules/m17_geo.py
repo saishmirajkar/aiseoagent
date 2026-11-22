@@ -16,7 +16,7 @@ from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Integration, Level, Need, Status,
 )
 from app.modules.m02_content import faq_jsonld
-from app.modules.m09_schema import ARTICLE_PATH, SOCIAL
+from app.modules.m09_schema import ARTICLE_PATH, SOCIAL, is_article
 
 H, M, L = Level.HIGH, Level.MED, Level.LOW
 NO_LLM = "Anthropic API key not configured (add the ANTHROPIC_API_KEY secret)"
@@ -199,8 +199,7 @@ class GeoContent(CheckModule):
                                       summary="Long content pages with no statistics and no cited sources"))
 
         auth = []
-        arts = [p for p in pages if ARTICLE_PATH.search(urlsplit(p.url).path) or p.og.get("type") == "article"
-                or "datePublished" in p.dates]
+        arts = [p for p in pages if is_article(p)]
         for p in arts:
             missing = []
             authors = [a for a in p.authors if "://" not in a]
@@ -221,7 +220,7 @@ class GeoContent(CheckModule):
     def _facts(self, ctx: AuditContext) -> CheckResult:
         # the business's own claims: blog articles often quote other companies' founding years
         own = [p for p in ctx.site.html_pages()
-               if not (ARTICLE_PATH.search(urlsplit(p.url).path) or p.og.get("type") == "article")]
+               if not (ARTICLE_PATH.search(urlsplit(p.url).path) or is_article(p))]
         claims = extract_fact_claims(own)
         if not claims["founded"] and not claims["experience"]:
             return self.not_applicable("geo.fact_consistency", "No founding year or years-of-experience claims found")

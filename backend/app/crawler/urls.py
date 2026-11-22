@@ -119,7 +119,8 @@ def path_extension(url: str) -> str:
 ACTION_QUERY_KEYS = {"replytocom", "share", "add-to-cart", "add_to_cart", "add-to-wishlist", "add_to_wishlist",
                      "action", "like_comment", "print", "redirect_to", "unapproved", "moderation-hash"}
 ACTION_PATH = re.compile(r"/(wp-login\.php|wp-admin|cart|checkout|account/login|account/register|my-account|"
-                         r"customer_authentication|login|logout|signin|sign-in|feed)(/|$)|/cart/add|/comment-page-\d+", re.I)
+                         r"customer_authentication|login|logout|signin|sign-in|feed)(/|$)|/cart/add|/comment-page-\d+|"
+                         r"^/cdn-cgi/", re.I)  # Cloudflare's email-protection and challenge endpoints
 
 
 def is_action_url(url: str) -> bool:
