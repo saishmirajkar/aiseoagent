@@ -86,6 +86,7 @@ class Crawler:
         self.link_crawl_complete = False  # every page reachable by links was fetched
         self.dropped_for_limit = 0
         self._seq = itertools.count()
+        self._deferred: list[tuple] = []  # duplicate product addresses, crawled last
         self._last_progress = 0.0
         self.robots: RobotsInfo | None = None
         self.scope: SiteScope | None = None
@@ -271,8 +272,16 @@ class Crawler:
                 raise
             if not sitemap_seeded:
                 self.link_crawl_complete = self.dropped_for_limit == 0
-            if sitemap_seeded or self.fetched >= self.cfg.max_pages:
+            if self.fetched >= self.cfg.max_pages:
                 break
+            if sitemap_seeded:
+                # last: duplicate product addresses (/collections/x/products/y), only with budget to spare
+                if not self._deferred:
+                    break
+                for item in self._deferred[: self.cfg.max_pages - self.fetched]:
+                    queue.put_nowait(item)
+                self._deferred = []
+                continue
             sitemap_seeded = True
             added = 0
             for u in sitemap_urls:
@@ -285,7 +294,7 @@ class Crawler:
                 added += 1
                 if added >= self.cfg.max_pages - self.fetched:
                     break
-            if not added:
+            if not added and not self._deferred:
                 break
 
     async def _ingest(self, url: str, res: FetchResult, depth: int | None, via: str,
@@ -345,10 +354,15 @@ class Crawler:
             if not self.robots.can_fetch(t, self.ua_token):
                 self.url_status[t] = UrlStatus(url=t, status=None, blocked_by_robots=True)
                 continue
-            child_depth = depth + 1 if depth is not None else None
-            # duplicate product addresses (/collections/x/products/y) only after every other page, sitemap included
-            child_prio = SCOPED_PRIORITY if is_scoped_product_url(t) else prio + 1
-            queue.put_nowait((child_prio, next(self._seq), t, child_depth, "link"))
+            self._enqueue_link(queue, t, depth + 1 if depth is not None else None, prio + 1)
+
+    def _enqueue_link(self, queue: asyncio.PriorityQueue, url: str, depth: int | None, prio: int) -> None:
+        if is_scoped_product_url(url):
+            # duplicate product addresses (/collections/x/products/y) wait until every other page,
+            # sitemap included, has been crawled
+            self._deferred.append((SCOPED_PRIORITY, next(self._seq), url, depth, "link"))
+        else:
+            queue.put_nowait((prio, next(self._seq), url, depth, "link"))
 
     def _should_render(self, looks_like_shell: bool, is_home: bool) -> bool:
         mode = self.cfg.render_mode

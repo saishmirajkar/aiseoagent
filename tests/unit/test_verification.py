@@ -289,3 +289,48 @@ def test_wordpress_pages_with_og_article_are_not_articles():
     post.og = {"type": "article"}
     post.dates = {"published_time": "2026-10-20", "modified_time": "2026-10-20"}
     assert not is_article(about) and is_article(post)
+
+
+def test_scoped_product_urls_are_crawled_after_sitemap_pages():
+    import itertools
+    from types import SimpleNamespace
+    from app.crawler.crawl import Crawler
+    from app.crawler.urls import SiteScope
+    B = "https://s.com"
+    links = {B + "/": [B + "/collections/a/products/x", B + "/about", B + "/collections/a/products/y"],
+             B + "/about": [], B + "/products/x": []}
+    c = Crawler.__new__(Crawler)
+    c.cfg = SimpleNamespace(max_pages=4, concurrency=1)
+    c.fetched, c.dropped_for_limit, c._seq, c._deferred = 0, 0, itertools.count(), []
+    c.seen, c.scope, c.order = {B + "/"}, SiteScope("s.com"), []
+    c.robots = SimpleNamespace(can_fetch=lambda u, a: True)
+    c.ua_token = "x"
+
+    class F:
+        async def fetch(self, url, **kw):
+            return url
+    c.fetcher = F()
+
+    async def noop(*a, **k):
+        return None
+    c._check_cancel, c._report = noop, noop
+
+    async def ingest(url, res, depth, via, queue, prio=0):
+        c.order.append(url)
+        for t in links.get(url, []):
+            if t not in c.seen:
+                c.seen.add(t)
+                c._enqueue_link(queue, t, 1, prio + 1)
+    c._ingest = ingest
+
+    async def go():
+        q = asyncio.PriorityQueue()
+        q.put_nowait((0, next(c._seq), B + "/", 0, "start"))
+        await c._crawl_queue(q, {B + "/products/x": None, B + "/products/z": None})
+    asyncio.run(go())
+    # links first, then sitemap pages, then (budget permitting) the duplicate product addresses
+    assert c.order[:4] == [B + "/", B + "/about", B + "/products/x", B + "/products/z"]
+    assert c.fetched == 4
+    c.cfg.max_pages, c.fetched, c.order, c.seen, c._deferred = 10, 0, [], {B + "/"}, []
+    asyncio.run(go())
+    assert c.order[4:] == [B + "/collections/a/products/x", B + "/collections/a/products/y"]
