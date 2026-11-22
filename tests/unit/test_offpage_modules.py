@@ -306,3 +306,19 @@ def test_authority_outside_top_n_is_a_warning(monkeypatch):
     monkeypatch.setattr(m10_backlinks.inlinks, "referring_domains", lambda d: None)
     r = run(BacklinkAnalysis(), ctx(_site()))
     assert r["bl.authority"].status == Status.WARNING and "outside top" in r["bl.authority"].summary
+
+
+def test_outreach_needs_more_than_one_shared_word_for_multiword_topics(monkeypatch, no_db):
+    monkeypatch.setattr(LinkBuilding, "_contacts", lambda self, ctx, ps: asyncio.sleep(0))
+    monkeypatch.setattr(LinkBuilding, "_save", staticmethod(lambda site, ps, aid: None))
+    c = ctx(_site())
+    c.search = FakeSearch(lambda q: [
+        SearchResult("https://musicblog.com/p", "Bedroom Producers Blog", "Free plugins for music producers"),
+        SearchResult("https://eprnews.org/p", "Textile producer responsibility explained",
+                     "How producer responsibility organizations run textile EPR")])
+    home = c.site.homepage.url
+    c.shared["keyword_map"] = {home: {"primary_keyword": "textile producer responsibility organization",
+                                      "cluster": "epr"}}
+    r = run(LinkBuilding(), c)
+    doms = {i.evidence["domain"] for i in r["out.prospects"].items}
+    assert "eprnews.org" in doms and "musicblog.com" not in doms

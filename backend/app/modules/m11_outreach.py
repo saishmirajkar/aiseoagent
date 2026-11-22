@@ -90,6 +90,7 @@ class LinkBuilding(CheckModule):
                  or brand_of(ctx) or site_domain.split(".")[0])
         topic_words = kw_tokens(topic) | {w for _, r in sorted(kmap.items())[:10]  # sorted: stable across runs
                                           for w in kw_tokens(r.get("primary_keyword", ""))}
+        core_words = kw_tokens(topic)
         cands: dict[str, dict] = {}
 
         def add(url: str, title: str, snippet: str, kind: str) -> None:
@@ -100,8 +101,13 @@ class LinkBuilding(CheckModule):
                 return
             rel_words = kw_tokens(f"{title} {snippet}")
             relevance = len(rel_words & topic_words) / max(1, min(len(topic_words), 6))
-            if kind in ("guest_post", "resource") and not relevance:
-                return  # search results that share no topic words with the site are noise (e.g. generic news blogs)
+            if kind in ("guest_post", "resource"):
+                if not relevance:
+                    return  # search results that share no topic words with the site are noise (e.g. generic news blogs)
+                # one shared word is not enough for a multi-word topic: "producer" matches music-production blogs
+                # for an SB 707 "producer responsibility organization"
+                if len(core_words) >= 3 and len(rel_words & core_words) < 2:
+                    return
             cands[dom] = {"url": url, "title": title, "snippet": snippet, "kind": kind, "domain": dom,
                           "relevance": round(min(1.0, relevance), 2)}
 
