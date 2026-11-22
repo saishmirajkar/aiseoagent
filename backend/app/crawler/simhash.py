@@ -25,7 +25,9 @@ def simhash(text: str, shingle: int = 3) -> int:
     words = tokens(text)
     if not words:
         return 0
-    feats = [" ".join(words[i:i + shingle]) for i in range(max(1, len(words) - shingle + 1))]
+    # each distinct shingle counts once: repeated card text ("Regular price $0.00 … Sold out" on every product
+    # tile) would otherwise outweigh what actually differs between two listing pages
+    feats = {" ".join(words[i:i + shingle]) for i in range(max(1, len(words) - shingle + 1))}
     v = [0] * 64
     for f in feats:
         h = _h64(f)

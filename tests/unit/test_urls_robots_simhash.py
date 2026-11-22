@@ -71,9 +71,9 @@ def test_robots_status_semantics():
 
 # ------------------------------------------------------------------ simhash / content hash
 def test_simhash_near_duplicates():
-    a = "Acme widgets are durable and precise tools used in workshops and factories every day " * 5
+    a = " ".join(f"Acme widget model {i} is a durable and precise tool used in workshop number {i * 7}." for i in range(40))
     b = a + " Extra sentence."
-    c = "Completely different content about gardening, roses, soil, watering schedules and pests " * 5
+    c = " ".join(f"Garden note {i}: roses in bed {i * 3} need soil checks, watering and pest control." for i in range(40))
     assert content_hash(a) == content_hash(a.upper())
     assert hamming(simhash(a), simhash(b)) <= 3
     assert hamming(simhash(a), simhash(c)) > 10

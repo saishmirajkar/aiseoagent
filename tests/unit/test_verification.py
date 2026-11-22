@@ -222,3 +222,14 @@ def test_about_page_variants():
     from app.modules.m17_geo import EEAT_PATHS
     assert EEAT_PATHS["about"].search("https://x.com/pages/about-california-textile-group")
     assert not EEAT_PATHS["about"].search("https://x.com/pages/aboutness")
+
+
+def test_repeated_card_text_does_not_make_listings_near_duplicates():
+    from app.crawler.simhash import hamming, simhash
+    card = " Regular price $0.00 Sale price $0.00 Regular price Unit price per Sold out "
+    a = card.join(f"COTTON JERSEY {w} GSM" for w in range(100, 140)) 
+    b = card.join(f"MODAL RIB {w} GSM TRIBLEND" for w in range(300, 340))
+    from app.config import env  # noqa: F401
+    from app.sitemodel import builder
+    assert hamming(simhash(a), simhash(b)) > builder.NEAR_DUPLICATE_HAMMING
+    assert simhash("same text here twice") == simhash("same text here twice")
