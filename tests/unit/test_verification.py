@@ -284,7 +284,8 @@ def test_wordpress_pages_with_og_article_are_not_articles():
     from app.sitemodel.types import PageData
     about = PageData(url="https://x.com/about/", final_url="https://x.com/about/")
     about.og = {"type": "article"}
-    about.dates = {"modified_time": "2026-10-22"}
+    about.dates = {"modified_time": "2026-10-22", "datePublished": "2024-01-01"}  # Yoast WebPage node
+    about.structured_data = {"types": ["WebPage", "BreadcrumbList", "Organization"]}
     post = PageData(url="https://x.com/lawsuit-update/", final_url="https://x.com/lawsuit-update/")
     post.og = {"type": "article"}
     post.dates = {"published_time": "2026-10-20", "modified_time": "2026-10-20"}
