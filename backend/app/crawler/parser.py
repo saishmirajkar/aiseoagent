@@ -18,7 +18,9 @@ log = logging.getLogger(__name__)
 
 STRIP_FOR_TEXT = ["script", "style", "noscript", "template", "svg", "iframe", "object", "canvas"]
 # site chrome that is not the page's own content (menus, drawers, pop-ups, hidden copies)
-CHROME = 'nav, [role="navigation"], dialog, [role="dialog"], [aria-hidden="true"], [hidden]'
+CHROME = ('nav, [role="navigation"], dialog, [role="dialog"], [aria-hidden="true"], [hidden], '
+          # form honeypots (Gravity Forms) carry a random label on every load, which would change the page text
+          '.gform_validation_container')
 PAGE_FRAME = ('header, footer, aside, [role="banner"], [role="contentinfo"], [role="complementary"], '
               # Shopify section groups (header, announcement bar, footer) wrap the site chrome; the page's own
               # sections use "template--" ids. Older themes use fixed ids.

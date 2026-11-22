@@ -346,3 +346,14 @@ def test_scoped_product_links_count_for_the_product_page():
     assert s.pages[BASE + "/products/westsider"].inlinks >= 1
     r = run(InternalLinking(), ctx(s))
     assert r["links.orphans"].status.value == "PASS"
+
+
+def test_gravity_forms_honeypot_is_not_content():
+    from app.crawler.parser import parse_page
+    from app.crawler.urls import SiteScope
+    from app.sitemodel.types import PageData
+    html = ('<html><body><main><h1>Contact</h1><p>' + "Write to our team about SB 707 compliance. " * 10 + '</p>'
+            '<div class="gform_validation_container"><label>Comments</label><input></div></main></body></html>')
+    p = PageData(url="https://x.com/contact/", final_url="https://x.com/contact/")
+    parse_page(p, html, SiteScope("x.com"))
+    assert "Comments" not in p.text
