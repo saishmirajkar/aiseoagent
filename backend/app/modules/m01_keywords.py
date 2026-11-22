@@ -17,6 +17,7 @@ from app.crawler.parser import parse_page
 from app.crawler.rate_limit import HostRateLimiter
 from app.crawler.urls import SiteScope, host_of, normalize_url
 from app.config import env
+from app.modules.common import is_utility
 from app.llm.client import BudgetExceeded, LLMError, STR, arr, enum, obj
 from app.llm.summaries import cached_analysis, chunks, page_summary, select_pages, site_context
 from app.modules.base import (
@@ -155,7 +156,7 @@ class KeywordResearch(CheckModule):
         src = [f"AI analysis ({ctx.settings.llm.reasoning_model})"]
         ctx.shared.setdefault("metrics", []).append(("keywords", "keyword_map", list(kmap.values()), src[0]))
         partial = f" ({len(kmap)} of {len(pages)} pages analysed; {errors[0]})" if errors else ""
-        skipped = len(ctx.site.indexable_pages()) - len(pages)
+        skipped = len([p for p in ctx.site.content_pages() if not is_utility(p.url)]) - len(pages)
         cap_note = f"; {skipped} lower-priority page(s) beyond the LLM page limit were not analysed" if skipped > 0 else ""
 
         # mapping

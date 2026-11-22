@@ -8,6 +8,7 @@ from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Integration, Level, Need,
 )
 from app.llm.client import BOOL, LLMError, STR, arr, obj
+from app.crawler.urls import is_first_page_param, is_pagination
 from app.llm.summaries import chunks, select_pages, site_context
 from app.modules.m01_keywords import kw_tokens
 from app.modules.pixel_width import title_px
@@ -86,7 +87,7 @@ class MetaTags(CheckModule):
 
     async def run(self, ctx: AuditContext) -> list[CheckResult]:
         th = ctx.settings.thresholds
-        pages = [p for p in ctx.site.html_pages() if not p.is_noindex]
+        pages = [p for p in ctx.site.html_pages() if not p.is_noindex and not (is_pagination(p.url) or is_first_page_param(p.url))]
         indexable = [p for p in pages if p.canonical_is_self]
         n = len(pages)
         out: list[CheckResult] = []

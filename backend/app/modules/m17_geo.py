@@ -143,7 +143,7 @@ class GeoContent(CheckModule):
     async def run(self, ctx: AuditContext) -> list[CheckResult]:
         site = ctx.site
         kmap = ctx.shared.get("keyword_map", {})
-        pages = site.indexable_pages()
+        pages = site.content_pages()
         if not pages:
             return [self.not_applicable(c.id, "No indexable pages") for c in self.checks]
         bp = cached_analysis(ctx)

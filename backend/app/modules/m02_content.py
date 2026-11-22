@@ -133,7 +133,7 @@ class ContentOptimization(CheckModule):
         site = ctx.site
         th = ctx.settings.thresholds
         bp = cached_analysis(ctx)
-        pages = [p for p in site.indexable_pages()]
+        pages = site.content_pages()
         n = len(pages)
         if not n:
             return [self.not_applicable(c.id, "No indexable pages") for c in self.checks]

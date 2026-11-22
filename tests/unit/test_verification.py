@@ -163,6 +163,15 @@ def test_webflow_pagination_and_first_page():
     assert is_first_page_param("https://x.com/?d06e130e_page=1") and not is_first_page_param("https://x.com/")
 
 
+def test_listing_pages_are_judged_once():
+    from app.sitemodel.types import PageData, SiteFacts, SiteModel
+    site = SiteModel(facts=SiteFacts(input_url="https://x.com/", host="x.com", origin="https://x.com", start_url="https://x.com/"))
+    for u in ("https://x.com/", "https://x.com/?d06e130e_page=1", "https://x.com/?d06e130e_page=2", "https://x.com/about"):
+        site.pages[u] = PageData(url=u, final_url=u, status=200, content_type="text/html", is_html=True, depth=0)
+    assert all(p.indexable for p in site.pages.values())
+    assert sorted(p.url for p in site.content_pages()) == ["https://x.com/", "https://x.com/about"]
+
+
 def test_http_page_that_only_fails_over_http_is_not_broken():
     from app.crawler.crawl import Crawler, HTTP_ONLY_UNREACHABLE
     from app.crawler.urls import SiteScope

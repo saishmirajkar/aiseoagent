@@ -90,7 +90,7 @@ def cached_analysis(ctx) -> BoilerplateAnalysis:
 def select_pages(site: SiteModel, limit: int) -> list[PageData]:
     """Most important indexable, non-utility pages first (homepage, then by inlinks and depth)."""
     home = site.homepage
-    pages = [p for p in site.indexable_pages() if not is_utility(p.url)]
+    pages = [p for p in site.content_pages() if not is_utility(p.url)]
     pages.sort(key=lambda p: (0 if home and p.url == home.url else 1, -p.inlinks, p.depth if p.depth is not None else 99,
                               p.url))
     return pages[:limit]

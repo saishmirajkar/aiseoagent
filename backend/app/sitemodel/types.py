@@ -200,6 +200,11 @@ class SiteModel:
     def indexable_pages(self) -> list[PageData]:
         return [p for p in self.pages.values() if p.indexable]
 
+    def content_pages(self) -> list[PageData]:
+        """Indexable pages minus page 2+ / ?page=1 copies of a listing (judged once, on the listing itself)."""
+        from app.crawler.urls import is_first_page_param, is_pagination
+        return [p for p in self.indexable_pages() if not (is_pagination(p.url) or is_first_page_param(p.url))]
+
     def status_of(self, url: str) -> UrlStatus | None:
         """Best-known status for any URL (crawled page or separately checked)."""
         p = self.pages.get(url)
