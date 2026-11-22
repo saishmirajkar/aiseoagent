@@ -14,6 +14,7 @@ import re
 from collections import Counter, defaultdict
 from urllib.parse import parse_qs, urlsplit
 
+from app.crawler.urls import is_first_page_param, is_pagination
 from app.modules.base import (
     AuditContext, Category, CheckModule, CheckResult, CheckSpec, FindingItem, Level, Need, Status,
 )
@@ -129,6 +130,8 @@ def detect_types(page: PageData, site: SiteModel, local: bool) -> list[tuple[str
     """Expected schema types for a page, with the reason each was inferred."""
     out: list[tuple[str, str]] = []
     path = urlsplit(page.url).path
+    if is_pagination(page.url) or is_first_page_param(page.url):
+        return out  # page 2+ / ?page=1 of a listing: the first page carries the schema
     if page.url == site.facts.start_url or path in ("", "/"):
         out.append(("LocalBusiness" if local else "Organization", "homepage"))
         out.append(("WebSite", "homepage"))
