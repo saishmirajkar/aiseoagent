@@ -426,6 +426,10 @@ class SchemaMarkup(CheckModule):
             sd = p.structured_data or {}
             items = [(i, True) for i in sd.get("jsonld", [])] + [(i, False) for i in sd.get("microdata", [])] \
                 + [(i, False) for i in sd.get("rdfa", [])]
+            # identical copies (e.g. a theme's header repeated for mobile and desktop) count once: Google merges them
+            seen_items: set[str] = set()
+            items = [(i, j) for i, j in items
+                     if not ((k := json.dumps(i, sort_keys=True, default=str)) in seen_items or seen_items.add(k))]
             if items or sd.get("errors"):
                 with_sd += 1
             errs = list(sd.get("errors", []))

@@ -185,6 +185,12 @@ def test_schema_errors_required_conflicts():
     assert conf["type"] == "Organization" and conf["problem"] == "different names"
 
 
+def test_identical_schema_copies_count_once():
+    s = site([page("/", structured_data=_sd(ORG, ORG, WEBSITE))])
+    r = run(SCHEMA, ctx(s))
+    assert r["schema.conflicts"].status.value == "PASS"
+
+
 def test_schema_missing_types_and_generated_jsonld():
     s = site([page("/", title="Acme Widgets | Durable widgets", links=[link("/blog/how-to-choose"), link("/products/red-widget")],
                    meta_description="Home description that is unique to the homepage."),
