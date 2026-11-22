@@ -202,3 +202,23 @@ def test_viewport_initial_scale_only_is_responsive():
     assert _responsive_viewport("width=device-width, initial-scale=1")
     assert not _responsive_viewport("width=1024, initial-scale=1")
     assert not _responsive_viewport("user-scalable=no")
+
+
+def test_shopify_width_template_images_are_resolved():
+    from app.crawler.parser import parse_page
+    from app.crawler.urls import SiteScope
+    from app.sitemodel.types import PageData
+    html = ('<html><body><img class="lazyload" src="data:image/gif;base64,R0" '
+            'data-src="//shop.example/cdn/shop/files/fabric_{width}x.png?v=1" data-widths="[180,360,540,720,900]" alt="x">'
+            '<img src="/cdn/shop/files/roll_%7Bwidth%7Dx.jpg"></body></html>')
+    page = PageData(url="https://shop.example/", final_url="https://shop.example/")
+    parse_page(page, html, SiteScope("shop.example"))
+    srcs = [i.src for i in page.images]
+    assert "https://shop.example/cdn/shop/files/fabric_720x.png?v=1" in srcs
+    assert "https://shop.example/cdn/shop/files/roll_800x.jpg" in srcs
+
+
+def test_about_page_variants():
+    from app.modules.m17_geo import EEAT_PATHS
+    assert EEAT_PATHS["about"].search("https://x.com/pages/about-california-textile-group")
+    assert not EEAT_PATHS["about"].search("https://x.com/pages/aboutness")

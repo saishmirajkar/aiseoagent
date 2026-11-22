@@ -42,6 +42,18 @@ class ShellSignals:
         return self.mount_empty or self.noscript_js or (self.script_count >= 3 and self.word_count < 30)
 
 
+
+WIDTH_TEMPLATE = re.compile(r"\{width\}|%7Bwidth%7D", re.I)
+
+
+def _fill_width_template(src: str, widths: str | None) -> str:
+    """Shopify lazy-load themes write data-src="..._{width}x.jpg" and let a script pick the width; do the same."""
+    if not WIDTH_TEMPLATE.search(src):
+        return src
+    choices = [int(w) for w in re.findall(r"\d+", widths or "")]
+    width = min(choices, key=lambda w: abs(w - 800)) if choices else 800
+    return WIDTH_TEMPLATE.sub(str(width), src)
+
 def _clean(s: str | None) -> str:
     return _WS.sub(" ", s or "").strip()
 
@@ -269,6 +281,7 @@ def parse_page(page: PageData, html: str, scope: SiteScope) -> ShellSignals:
             src = lazy_src
         if not src or src.startswith("data:"):
             continue
+        src = _fill_width_template(src, _attr(img, "data-widths"))
         absrc = normalize_url(src, base)
         if not absrc:
             continue
