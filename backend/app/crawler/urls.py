@@ -135,8 +135,17 @@ def is_pagination(url: str) -> bool:
     """Page 2, 3, … of a listing (blog index, category, search results)."""
     parts = urlsplit(url)
     q = parse_qs(parts.query)
+    # page/paged/pg, and Webflow's "<collection-id>_page" parameters
     return bool(PAGINATION.search(parts.path or "")) or any(
-        k in q and q[k][0].isdigit() and q[k][0] != "1" for k in ("page", "paged", "pg"))
+        (k.lower() in ("page", "paged", "pg") or k.lower().endswith("_page")) and v and v[0].isdigit() and v[0] != "1"
+        for k, v in q.items())
+
+
+def is_first_page_param(url: str) -> bool:
+    """?page=1 / ?xyz_page=1: the same content as the listing without the parameter."""
+    q = parse_qs(urlsplit(url).query)
+    return any((k.lower() in ("page", "paged", "pg") or k.lower().endswith("_page")) and v and v[0] == "1"
+               for k, v in q.items())
 
 
 def looks_like_page(url: str) -> bool:

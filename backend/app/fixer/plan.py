@@ -284,12 +284,12 @@ def build_plan(findings: list[dict], pages: list[dict], audit_input: dict) -> li
 
 def _dedupe(items: list[FixItem]) -> list[FixItem]:
     """One change per page: /x and /x/ are the same page, and page 2+ of a listing gets no page-level edits."""
-    from app.crawler.urls import is_pagination
+    from app.crawler.urls import is_first_page_param, is_pagination
     seen: set[tuple[str, str]] = set()
     out = []
     for it in items:
         if it.page_url and it.kind != "manual":
-            if is_pagination(it.page_url) or re.search(r"[?&]page=1$", it.page_url):
+            if is_pagination(it.page_url) or is_first_page_param(it.page_url):
                 continue
             key = (it.action, str(it.data.get("type", "")) + str(it.data.get("heading", "")) + str(it.data.get("target", "")),
                    it.page_url.rstrip("/"))

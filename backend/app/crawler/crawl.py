@@ -42,6 +42,7 @@ _PARSE_FIELDS = {f.name for f in fields(PageData)} - {
     "is_html", "error", "depth", "discovered_via", "blocked_by_robots"}
 
 
+HTTP_ONLY_UNREACHABLE = "http:// address didn't connect from our checker, but the https:// version works"
 BOT_CHALLENGE = "Bot-protection challenge page instead of content (e.g. Cloudflare 'Just a moment...')"
 CHALLENGE = re.compile(r"<title>\s*(just a moment\.\.\.|attention required! \| cloudflare|access denied|"
                        r"pardon our interruption|please verify you are a human)\s*</title>|/cdn-cgi/challenge-platform/|"
@@ -439,6 +440,16 @@ class Crawler:
                 res = await self.fetcher.fetch(u, html_only=True, retries=1)
                 if res.status is not None and res.status < 400:
                     await self._ingest(u, res, old.depth, old.discovered_via, sink)
+                elif res.status is None and u.startswith("http://"):
+                    # plain-http address that won't connect: if the https version answers, it isn't broken; keep it
+                    # as a checked link (not a page) so it's reported as an http link, not as a broken page
+                    alt = await self.fetcher.check("https://" + u[len("http://"):])
+                    if alt.status is not None and alt.status < 400:
+                        del self.pages[u]
+                        self.url_status[u] = UrlStatus(url=u, status=None, final_url=alt.final_url,
+                                                       error=HTTP_ONLY_UNREACHABLE)
+                    else:
+                        old.rechecked = True
                 else:
                     old.rechecked = True
 

@@ -30,6 +30,8 @@ def _unverifiable(status: int | None, error: str | None) -> bool:
 
 
 def _broken(status: int | None, error: str | None) -> bool:
+    if error and "https:// version works" in error:
+        return False  # only the plain-http form failed (our network); the page itself exists
     if status is not None:
         return status in (404, 410) or status >= 500 or (400 <= status < 500 and status not in UNVERIFIABLE)
     return bool(error) and ("ConnectError" in error or "Name or service" in error or "nodename" in error)

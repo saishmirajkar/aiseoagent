@@ -155,3 +155,33 @@ def test_collection_page_is_not_a_product():
     r = run(SchemaMarkup(), ctx(site([page("/"), coll, prod])))["schema.missing_types"]
     products = {i.url for i in r.items if i.evidence["missing_type"] == "Product"}
     assert BASE + "/products/bag" in products and BASE + "/collections/all" not in products
+
+
+def test_webflow_pagination_and_first_page():
+    from app.crawler.urls import is_first_page_param, is_pagination
+    assert is_pagination("https://x.com/?d06e130e_page=2") and not is_pagination("https://x.com/?d06e130e_page=1")
+    assert is_first_page_param("https://x.com/?d06e130e_page=1") and not is_first_page_param("https://x.com/")
+
+
+def test_http_page_that_only_fails_over_http_is_not_broken():
+    from app.crawler.crawl import Crawler, HTTP_ONLY_UNREACHABLE
+    from app.crawler.urls import SiteScope
+
+    class FakeFetcher:
+        async def fetch(self, url, **kw):
+            return FetchResult(url=url, final_url=url, status=None, error="ConnectError: [Errno -2] Name or service not known")
+
+        async def check(self, url, **kw):
+            return FetchResult(url=url, final_url=url, status=200 if url.startswith("https://") else None)
+
+    c = Crawler.__new__(Crawler)
+    c.scope, c.fetcher = SiteScope("ex.com"), FakeFetcher()
+    c.pages = {"http://ex.com/canvas": page("/canvas", url="http://ex.com/canvas", status=None,
+                                            error="ConnectError: [Errno -2] Name or service not known")}
+    c.url_status = {}
+    asyncio.run(c._verify_errors(pause_s=0))
+    assert "http://ex.com/canvas" not in c.pages and c.url_status["http://ex.com/canvas"].error == HTTP_ONLY_UNREACHABLE
+    s = site([page("/", links=[link("http://ex.com/canvas", internal=True)]), page("/canvas")],
+             url_status={"http://ex.com/canvas": c.url_status["http://ex.com/canvas"]})
+    r = run(TechnicalAudit(), ctx(s))
+    assert r["tech.broken_internal_links"].status.value == "PASS"
